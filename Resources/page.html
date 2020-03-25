@@ -1,0 +1,150 @@
+﻿<!doctype html>
+<html>
+
+<head no-publish>
+    <title></title>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0" />
+    <link href="https://oss.365lu.cn/css/weui.css" rel="stylesheet" type="text/css" />
+    <link href="https://oss.365lu.cn/css/base.css" rel="stylesheet" type="text/css" />
+    <link href="https://oss.365lu.cn/css/icon.css" rel="stylesheet" type="text/css" />
+    <link href="https://oss.365lu.cn/css/umc.ui.css" rel="stylesheet" type="text/css" />
+
+    <link href="https://oss.365lu.cn/css/mobile.css?v.16" rel="stylesheet" type="text/css" />
+    <script src="https://oss.365lu.cn/js/umc.js" type="text/javascript"></script>
+    <script src="https://oss.365lu.cn/js/umc.database.js"></script>
+    <script src="https://oss.365lu.cn/js/umc.grid.js"></script>
+    <script src="https://oss.365lu.cn/js/umc.ui.js"></script>
+    <script src="https://oss.365lu.cn/js/umc.dialog.js"></script>
+    <script src="https://oss.365lu.cn/js/umc.page.js"></script>
+    <script>
+        /*
+        * API UMC采用的动静分离策略，让资源性请求不再占用业务服务器性能，所有您可以把html js css image下载下来,单独部署，完全可以部署在阿里云的OSS、腾讯的COS、百度的BOS上
+        *
+        */
+        WDK.POS.Config({
+            "posurl": '/UMC/' + (WDK.cookie('device') || WDK.cookie('device', WDK.uuid()))
+        });
+    </script>
+    <script src="https://oss.365lu.cn/v0.1/js/umc.m.js"></script>
+    <style>
+        body > div[ui=main].ui {
+            position: relative;
+            height: auto;
+        }
+
+        div[ui=main] .wdk-header.header .back {
+            display: none;
+        }
+    </style>
+
+    <script>
+        (function ($) {
+            var pathname = location.pathname.substring(1);
+            var paths = pathname.split('/');
+            paths.shift();
+            var value = {};
+            value.model = paths.shift();
+            value.cmd = paths.shift();
+            switch (paths.length) {
+                case 0:
+                    break;
+                case 1:
+                    if (paths[0])
+                        value.Id = paths[0];
+                    break;
+                default:
+                    while (paths.length) {
+                        value[paths.shift()] = paths.shift();
+                    }
+                    break;
+            }
+            WDK.POS.Pathname = WDK.POS.QueryString = pathname;
+            $.page('main', '主页', function (root) {
+                root.on('back', function () {
+
+                }).on('top', function () {
+                    window.scroll(0, 0);
+                });
+                var t = new WDK.POS.Pager(root);
+                $(window).on("scroll", function () {
+                    var y = window.pageYOffset ||
+                        document.documentElement.scrollTop ||
+                        document.body.scrollTop || 0;
+                    t.r.cls('wdk-top', y > 300);
+                    t.r.attr('top', y);
+                });
+                var v = value;
+                t.cmd = v.cmd;
+                root.addClass('umc-' + v.model + '-' + v.cmd)
+                t.model = v.model;
+                delete v.model;
+                delete v.cmd;
+                t.search = v;
+                WDK.POS.Command(t.model, t.cmd, WDK.extend({
+                    limit: 30
+                }, v), function (xhr) {
+                    var tt = xhr.Title;
+                    if (tt) {
+                        document.title = tt.title || tt.text;
+                    }
+                    t.b.html('');
+                    t.dataSource(xhr);
+                    t.r.on('defer');
+                });//.Send(true);
+
+                $('.wdk-cart-quantity').length ?
+                    WDK.POS.Start() : 0;
+            });
+            $.POS.Event('Order', function () {
+                location.href = '/Retail.order?Order'
+            }).Event('Cart', function () {
+                location.href = '/Retail.order'
+            })
+        })(WDK);
+
+    </script>
+
+
+</head>
+
+<body>
+    <div id="wdk-msg"></div>
+    <!--%publish%-->
+    <div id="body" ui="main">
+        <header class="wdk-header header"></header>
+        <section></section>
+        <nav class="wdk-top-icon"></nav>
+        <footer class="wdk-footer"></footer>
+    </div>
+
+    <div class="wdk-sku">
+        <div class="wdk-sku-image">
+
+        </div>
+        <div class="wdk-sku-header">
+            <div class="wdk-sku-price">0.25</div>
+            <div class="wdk-sku-text"> </div>
+        </div>
+        <div class="wdk-sku-content">
+            <div class="wdk-sku-items"></div>
+            <div class="wdk-sku-qty">
+                <div>
+                    <a class="wdk-sku-reduce">-</a>
+                    <input value="1" type="number" min="1" style="width: 68px;">
+                    <a class="wdk-sku-add">+</a>
+                </div>
+            </div>
+
+        </div>
+        <div class="wdk-sku-footer">
+            <a ui-event="SKUOrder" class="weui_btn wdk-sku-order"></a>
+            <a ui-event="SKUBuy" style="margin-top:0px; color: #fff" class="weui_btn weui_btn_warn wdk-sku-buy"></a>
+
+        </div>
+    </div>
+    <div class="weui_mask wdk-sku-mask"></div>
+    <!--%end%-->
+</body>
+
+</html>

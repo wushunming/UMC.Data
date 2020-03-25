@@ -1,0 +1,74 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>netstandard2.0</TargetFramework>
+    <RootNamespace>UMC.Data</RootNamespace>
+    <AssemblyName>UMC.Data</AssemblyName>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Remove="Net\Hosting\**" />
+    <Compile Remove="Service\**" />
+    <Compile Remove="SharpZipLib\**" />
+    <EmbeddedResource Remove="Net\Hosting\**" />
+    <EmbeddedResource Remove="Service\**" />
+    <EmbeddedResource Remove="SharpZipLib\**" />
+    <None Remove="Net\Hosting\**" />
+    <None Remove="Service\**" />
+    <None Remove="SharpZipLib\**" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Compile Remove="Configuration\GridHeader.cs" />
+    <Compile Remove="Configuration\OdbcDbProvider.cs" />
+    <Compile Remove="Configuration\OleDbProvider.cs" />
+    <Compile Remove="Configuration\ProviderConfigurationSection.cs" />
+    <Compile Remove="Configuration\SqlCommonProvider.cs" />
+    <Compile Remove="Configuration\WildcardManager.cs" />
+    <Compile Remove="Net\FileMIMEHandler.cs" />
+    <Compile Remove="Net\IISService.cs" />
+    <Compile Remove="Net\MIMEMembership.cs" />
+    <Compile Remove="Net\MIMERequest.cs" />
+    <Compile Remove="Net\MIMEResponse.cs" />
+    <Compile Remove="Net\MIMEService.cs" />
+    <Compile Remove="Net\Push.cs" />
+    <Compile Remove="Net\PushHandler.cs" />
+    <Compile Remove="Sql\Comply\Deleter.cs" />
+    <Compile Remove="Sql\Comply\Inserter.cs" />
+    <Compile Remove="Sql\Comply\Null.cs" />
+    <Compile Remove="Sql\Comply\Selecter.cs" />
+    <Compile Remove="Sql\Comply\Updater.cs" />
+    <Compile Remove="Sql\IDeleter.cs" />
+    <Compile Remove="Sql\IInserter.cs" />
+    <Compile Remove="Sql\IQuery.cs" />
+    <Compile Remove="Sql\ISelecter.cs" />
+    <Compile Remove="Sql\IUpdater.cs" />
+    <Compile Remove="Web\Activity\MappActivity.cs" />
+    <Compile Remove="Web\Activity\SystemActivity - 复制.cs" />
+    <Compile Remove="Web\Activity\SystemLocationAccount.cs" />
+    <Compile Remove="Web\WebActivity - 复制.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Remove="index.html" />
+    <None Remove="Resources\click.html" />
+    <None Remove="Resources\header.html" />
+    <None Remove="Resources\index.js" />
+    <None Remove="Resources\page.html" />
+    <None Remove="Resources\sub.html" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <EmbeddedResource Include="Resources\header.html" />
+    <EmbeddedResource Include="Resources\sub.html" />
+    <EmbeddedResource Include="Resources\index.html" />
+    <EmbeddedResource Include="Resources\click.html" />
+    <EmbeddedResource Include="Resources\index.js" />
+    <EmbeddedResource Include="Resources\page.html" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Folder Include="Properties\" />
+  </ItemGroup>
+
+</Project>
