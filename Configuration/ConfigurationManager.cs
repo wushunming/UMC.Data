@@ -12,7 +12,7 @@ namespace UMC.Configuration
     /// <param name="key"></param>
     /// <param name="name"></param>
     /// <returns></returns>
-    public delegate System.Collections.Hashtable DataCacheCallback(Guid key, string name);
+    public delegate System.Collections.Hashtable DataCacheCallback(Guid key, string name, System.Collections.Hashtable cache);
     /// <summary>
     /// ≈‰÷√π‹¿Ì
     /// </summary>
@@ -136,28 +136,44 @@ namespace UMC.Configuration
             {
                 if (cache.ExpiredTime.Value < DateTime.Now)
                 {
-                    cache = new Cache()
+                    var data = callback(key, name, cache.CacheData);
+                    if (data != null)
                     {
-                        Id = key,
-                        CacheKey = name,
-                        BuildDate = DateTime.Now,
-                        ExpiredTime = DateTime.Now.AddSeconds(timeout),
-                        CacheData = callback(key, name)
-                    };
-                    sqer.Update(cache);
+                        cache = new Cache()
+                        {
+                            Id = key,
+                            CacheKey = name,
+                            BuildDate = DateTime.Now,
+                            ExpiredTime = DateTime.Now.AddSeconds(timeout),
+                            CacheData = data// callback(key, name)
+                        };
+                        sqer.Update(cache);
+                    }
+                    else
+                    {
+                        sqer.Update(new Cache()
+                        {
+                            BuildDate = DateTime.Now,
+                            ExpiredTime = DateTime.Now.AddSeconds(timeout)
+                        });
+                    }
                 }
             }
             else
             {
+                var data = callback(key, name, null);
+
+
                 cache = new Cache()
                 {
                     Id = key,
                     CacheKey = name,
                     BuildDate = DateTime.Now,
                     ExpiredTime = DateTime.Now.AddSeconds(timeout),
-                    CacheData = callback(key, name)
+                    CacheData = data
                 };
                 sqer.Insert(cache);
+
 
             }
             return cache;

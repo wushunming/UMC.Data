@@ -23,7 +23,7 @@ namespace UMC.Web
             protected internal override void Check(WebContext context)
             {
 
-                this.Header = _Header;// Security.AccessToken.Get("WebSession");
+                this.Header = _Header;
             }
 
             protected internal override bool IsAuthorization(string model, string command)
@@ -46,20 +46,117 @@ namespace UMC.Web
         {
             return WebRuntime.Categorys.FindAll(m => m.Category == category);
         }
-        void Download(UMC.Net.NetContext context)
+        void Temp(UMC.Net.NetContext context)
         {
-            var file = context.Url.LocalPath.Substring(10);
-            string filename = UMC.Data.Utility.MapPath(String.Format("App_Data\\Temp\\{0}", file));
-
-            if (System.IO.File.Exists(filename))
+            var file = context.Url.LocalPath.Substring(5);
+            string filename = UMC.Data.Utility.MapPath(String.Format("App_Data\\Static\\TEMP\\{0}", file));
+            switch (context.HttpMethod)
             {
-                context.ContentType = "application/octet-stream";
-                using (System.IO.FileStream stream = System.IO.File.OpenRead(filename))
-                {
-                    Utility.Copy(stream, context.OutputStream);
-                }
-
+                case "GET":
+                    File(context, filename);
+                    break;
+                case "PUT":
+                    Utility.Copy(context.InputStream, filename);
+                    break;
             }
+        }
+        void File(UMC.Net.NetContext context, String name)
+        {
+            if (System.IO.File.Exists(name))
+            {
+                TransmitFile(context, name);
+            }
+            else
+            {
+                context.StatusCode = 404;
+            }
+        }
+        void TransmitFile(UMC.Net.NetContext context, String name)
+        {
+
+            var lastIndex = name.LastIndexOf('.');
+
+            var extName = "html";
+            if (lastIndex > -1)
+            {
+                extName = name.Substring(lastIndex + 1);
+            }
+            switch (extName.ToLower())
+            {
+                case "pdf":
+                    context.ContentType = "application/pdf";
+                    break;
+                case "txt":
+                    context.ContentType = "text/plain";
+                    break;
+                case "htm":
+                case "html":
+                    context.ContentType = "text/html";
+                    break;
+                case "json":
+                    context.ContentType = "text/json";
+                    break;
+                case "js":
+                    context.ContentType = "text/javascript";
+                    break;
+                case "css":
+                    context.ContentType = "text/css";
+                    break;
+                case "bmp":
+                    context.ContentType = "image/bmp";
+                    break;
+                case "gif":
+                    context.ContentType = "image/gif";
+                    break;
+                case "jpeg":
+                case "jpg":
+                    context.ContentType = "image/jpeg";
+                    break;
+                case "png":
+                    context.ContentType = "image/png";
+                    break;
+                case "svg":
+                    context.ContentType = "image/svg+xml";
+                    break;
+                case "mp3":
+                    context.ContentType = "audio/mpeg";
+                    break;
+                case "mp4":
+                    context.ContentType = "video/mpeg4";
+                    break;
+                case "xml":
+                    context.ContentType = "text/xml";
+                    break;
+                default:
+                    context.ContentType = "application/octet-stream";
+                    break;
+            }
+            var file = new System.IO.FileInfo(name);
+
+            context.AddHeader("Last-Modified", file.LastWriteTimeUtc.ToString("r"));
+            var Since = context.Headers["If-Modified-Since"];
+            if (String.IsNullOrEmpty(Since) == false)
+            {
+                var time = Convert.ToDateTime(Since);
+                if (time >= file.LastWriteTimeUtc)
+                {
+                    context.StatusCode = 304;
+                    return;
+
+                }
+            }
+
+            using (System.IO.FileStream stream = System.IO.File.OpenRead(name))
+            {
+                Utility.Copy(stream, context.OutputStream);
+            }
+
+        }
+
+
+        protected virtual void Domain(UMC.Net.NetContext context)
+        {
+            context.Redirect(WebResource.Instance().WebDomain());
         }
         void Process(UMC.Net.NetContext context)
         {
@@ -105,7 +202,7 @@ namespace UMC.Web
                     return;
                 }
             }
-            context.ContentType = "text/javascript;charset=utf-8";
+
 
             var Url = context.Url;
             var ip = context.Headers.Get("X-Real-IP");
@@ -113,10 +210,19 @@ namespace UMC.Web
             {
                 ip = context.UserHostAddress; ;
             }
-            var cahash = context.Headers.Get("CA-Host");
-            if (String.IsNullOrEmpty(cahash) == false)
+            var host = UMC.Data.WebResource.Instance().APIHost(); ;
+            if (String.IsNullOrEmpty(host))
             {
-                Url = new Uri(String.Format("https://{1}{0}", context.Url.PathAndQuery, cahash));
+                var cahash = context.Headers.Get("CA-Host");
+                if (String.IsNullOrEmpty(cahash) == false)
+                {
+                    host = String.Format("https://{0}", context.Headers.Get("CA-Host"));
+                }
+            }
+
+            if (String.IsNullOrEmpty(host) == false)
+            {
+                Url = new Uri(String.Format("{1}{0}", context.Url.PathAndQuery, host));
             }
 
 
@@ -126,7 +232,18 @@ namespace UMC.Web
             });
         }
 
-
+        public static void Registers(IEnumerable<System.Reflection.Assembly> assembly)
+        {
+            WebRuntime.Register(typeof(UMC.Data.Reflection).Assembly);
+            foreach (var a in assembly)//mscorlib, 
+            {
+                var mpps = a.GetCustomAttributes(typeof(MappingAttribute), false);
+                if (mpps.Length > 0)
+                {
+                    WebRuntime.Register(a);
+                }
+            }
+        }
         void Process(NameValueCollection nvs,
            Uri Url, Net.NetContext context, string model, string cmd, Action<Uri> redirec)
         {
@@ -170,24 +287,31 @@ namespace UMC.Web
             string start = nvs.Get("_start");
             for (var i = 0; i < nvs.Count; i++)
             {
-                var key = nvs.GetKey(i);
+                var key = System.Web.HttpUtility.UrlDecode(nvs.GetKey(i));
+                var value = nvs.Get(i);
                 if (String.IsNullOrEmpty(key))
                 {
-                    if (String.IsNullOrEmpty(nvs.Get(i)) == false)
+                    if (String.IsNullOrEmpty(value) == false)
                     {
-                        QueryString.Add(null, nvs.Get(i));
+                        QueryString.Add(null, value);
                     }
                 }
                 else if (!key.StartsWith("_"))
                 {
-                    QueryString.Add(key, nvs.Get(i));
+                    QueryString.Add(key, value);
                 }
             }
             var jsonp = QueryString.Get("jsonp");
             QueryString.Remove("jsonp");
             WebSession session = null;
-            var zip = context.OutputStream;
-            var writer = new System.IO.StreamWriter(zip);
+            var writer = new System.IO.StreamWriter(context.OutputStream);
+
+            context.ContentType = "text/javascript;charset=utf-8";
+            if (String.IsNullOrEmpty(cmd) == false && cmd.EndsWith(".html"))
+            {
+                context.ContentType = "text/html";
+
+            }
 
             if (String.IsNullOrEmpty(SessionKey) == false)
             {
@@ -200,16 +324,16 @@ namespace UMC.Web
                     case "System":
                         switch (cmd)
                         {
-                            case "BackUp":
-                            case "Upgrade":
-                            case "Click":
-                            case "Access":
-                            case "Restore":
-                            case "Menu":
-                                Authorization(context);
+                            case "Icon":
+                            case "TimeSpan":
+                            case "Start":
+                            case "Setup":
+                            case "Log":
+                            case "Mapping":
+                                session = new SysSession();
                                 break;
                             default:
-                                session = new SysSession();
+                                Authorization(context);
                                 break;
                         }
                         break;
@@ -219,11 +343,18 @@ namespace UMC.Web
                 }
 
             }
-            catch (SystemException)
+            catch (Data.Sql.DbException exp)
             {
-                session = new SysSession();
-                model = "System";
-                cmd = "Start";
+                if (exp.DbCommand == null)
+                {
+                    session = new SysSession();
+                    model = "System";
+                    cmd = "Start";
+                }
+                else
+                {
+                    throw exp;
+                }
 
             }
             var client = new WebClient(Url, context.UrlReferrer, context.UserHostAddress, context.UserAgent, session);
@@ -232,7 +363,7 @@ namespace UMC.Web
             {
                 client.IsApp = true;
             }
-
+            client.XHRTime = Utility.IntParse(context.Headers["umc-request-time"], 0) + 1;
             if (String.IsNullOrEmpty(start) == false)
             {
                 client.Start(start);
@@ -242,21 +373,17 @@ namespace UMC.Web
 
                 client.SendDialog(QueryString);
             }
-            else
+            else if (String.IsNullOrEmpty(cmd))
             {
-                if (String.IsNullOrEmpty(cmd))
+                if (model.StartsWith("[") == false)
                 {
-                    if (model.StartsWith("[") == false)
-                    {
-                        throw new Exception("Command is empty");
-                    }
-                }
-                else
-                {
-                    client.Command(model, cmd, QueryString);
+                    throw new Exception("Command is empty");
                 }
             }
-
+            else
+            {
+                client.Command(model, cmd, QueryString);
+            }
 
             if (String.IsNullOrEmpty(model) == false && model.StartsWith("[") && String.IsNullOrEmpty(cmd))
             {
@@ -276,7 +403,6 @@ namespace UMC.Web
                 }
             }
             writer.Flush();
-            zip.Close();
         }
 
         protected virtual void Authorization(UMC.Net.NetContext context)
@@ -294,6 +420,48 @@ namespace UMC.Web
             {
                 sessionKey = cookie;
             }
+            var ns = new NameValueCollection();
+            var sign = String.Empty;
+            var hs = context.Headers;
+            for (var i = 0; i < hs.Count; i++)
+            {
+                var key = hs.GetKey(i);
+                switch (key.ToLower())
+                {
+                    case "umc-request-sign":
+                        sign = hs[i];
+                        break;
+                    default:
+                        if (key.StartsWith("umc-"))
+                        {
+                            ns.Add(key, Uri.UnescapeDataString(hs[i]));
+                        }
+                        break;
+                }
+            }
+            if (String.IsNullOrEmpty(sign) == false)
+            {
+                if (String.Equals(Utility.Sign(ns, Data.WebResource.Instance().AppSecret()), sign, StringComparison.CurrentCultureIgnoreCase))
+                {
+                    var roles = ns["umc-request-user-role"];
+                    var id = ns["umc-request-user-id"];
+                    var name = ns["umc-request-user-name"];
+                    var alias = ns["umc-request-user-alias"];
+                    var sid = Data.Utility.Guid(sessionKey, true).Value;
+                    if (String.IsNullOrEmpty(roles) == false)
+                    {
+                        var user = UMC.Security.Identity.Create(Utility.Guid(id) ?? sid, name, alias, roles.Split(','));
+                        UMC.Security.Principal.Create(user, UMC.Security.AccessToken.Create(user, sid, contentType, 0));
+                    }
+                    else
+                    {
+                        var user = UMC.Security.Identity.Create(Utility.Guid(id) ?? sid, name, alias);
+                        UMC.Security.Principal.Create(user, UMC.Security.AccessToken.Create(user, sid, contentType, 0));
+                    }
+                    return;
+                }
+            }
+
             if (String.IsNullOrEmpty(sessionKey))
             {
                 var uid = Guid.NewGuid();
@@ -307,23 +475,9 @@ namespace UMC.Web
             {
                 UMC.Security.Membership.Instance().Authorization(sessionKey, contentType);
 
+
             }
-            var urf = context.UrlReferrer;
-            if (urf != null)
-            {
-                if (String.IsNullOrEmpty(urf.Query) == false)
-                {
-                    var query = System.Web.HttpUtility.ParseQueryString(urf.Query.Substring(1));
-                    var sp = UMC.Data.Utility.Guid(query["sp"]);
-                    if (sp.HasValue)
-                    {
-                        if (String.Equals(UMC.Security.AccessToken.Get("Spread-Id"), sp.ToString()) == false)
-                        {
-                            UMC.Security.AccessToken.Set("Spread-Id", sp.ToString());
-                        }
-                    }
-                }
-            }
+
 
 
         }
@@ -336,7 +490,7 @@ namespace UMC.Web
                 while (em.MoveNext())
                 {
 
-                    MappingAttribute mapping = (MappingAttribute)em.Current.Value[0].GetCustomAttributes(typeof(MappingAttribute), false)[0];
+                    MappingAttribute mapping = (MappingAttribute)em.Current.Value[0].Type.GetCustomAttributes(typeof(MappingAttribute), false)[0];
 
 
 
@@ -387,254 +541,253 @@ namespace UMC.Web
             {
                 get; set;
             }
-            public string ResourceKey
-            { get; set; }
             public string ResourceJS
             { get; set; }
             public Type Type { get; set; }
+            public int PageIndex { get; set; }
         }
 
 
-        static Dictionary<String, RKey> ResourceKeys = new Dictionary<string, RKey>();
+        static List<RKey> resourceKeys = new List<RKey>();
+
+        static List<RKey> ResourceKeys
+        {
+            get
+            {
+                if (resourceKeys.Count == 0)//.ContainsKey(name) == false)
+                {
+                    var Initializers = new List<Data.Sql.Initializer>(Data.Sql.Initializer.Initializers());
+                    foreach (var init in Data.Sql.Initializer.Initializers())
+                    {
+                        resourceKeys.Add(new RKey
+                        {
+                            Name = init.Name,
+                            Type = init.GetType(),
+                            ResourceJS = init.ResourceJS,
+                            PageIndex = init.PageIndex,
+                        });
+
+                    }
+                    resourceKeys.Sort((x, y) =>
+                    {
+                        return y.PageIndex.CompareTo(x.PageIndex);
+                    });
+                }
+                return resourceKeys;
+            }
+
+        }
         static RKey GetResourceKey(string name)
         {
-            if (ResourceKeys.ContainsKey(name) == false)
-            {
-                var Initializers = new List<Data.Sql.Initializer>(Data.Sql.Initializer.Initializers());
-                foreach (var init in Data.Sql.Initializer.Initializers())
-                {
-                    ResourceKeys[init.Name] = new RKey
-                    {
-                        Name = init.Name,
-                        ResourceKey = init.ResourceKey,
-                        Type = init.GetType(),
-                        ResourceJS = init.ResourceJS
-                    };
+            return ResourceKeys.Find(e => e.Name == name);
 
+        }
+        protected bool Resource(UMC.Net.NetContext context, string path)
+        {
+            foreach (var key in ResourceKeys)
+            {
+                var initer = Reflection.CreateInstance(key.Type) as Data.Sql.Initializer;
+                if (initer.Resource(context, path))
+                {
+                    return true;
                 }
             }
-            if (ResourceKeys.ContainsKey(name))
+            return false;
+        }
+        bool CheckUMC(UMC.Net.NetContext context)
+        {
+            var query = context.Url.Query;
+            if (Utility.IsApp(context.UserAgent) || query.Contains("?jsonp=") || query.Contains("&jsonp=")
+                  || query.Contains("?_model=")
+                  || query.Contains("&_model="))
             {
-                return ResourceKeys[name];
+                return true;
             }
-            return null;
+            return false;
+
         }
         #region IMIMEHandler Members
 
         public virtual void ProcessRequest(UMC.Net.NetContext context)
         {
+
             var path = context.Url.LocalPath;
-            var paths = new List<string>(path.Split(new char[] { '/' }, StringSplitOptions.RemoveEmptyEntries));
-            String fileName = "";
-            if (paths.Count > 0)
-            {
-                if (paths[paths.Count - 1].IndexOf('.') > -1)
-                {
-                    fileName = paths[paths.Count - 1];
-                    paths.RemoveAt(paths.Count - 1);
-                }
 
+            var staticFile = Utility.MapPath("App_Data/Static" + path);
+
+            var paths = new List<string>(context.Url.LocalPath.Split(new char[] { '/' }, StringSplitOptions.RemoveEmptyEntries));
+            if (paths.Count == 0)
+            {
+                paths.Add("index");
+                staticFile += "index.html";
             }
-            if (paths.Count > 0)
+            switch (context.HttpMethod)
             {
-                switch (paths[0])
-                {
-                    case "Admin":
-                        IndexResource(context);
-                        //Resource(context, "index");
-                        return;
-                    case "Click":
-                    case "Page":
-                    case "Sub":
-                        Resource(context, paths[0].ToLower());
-                        return;
-                    case "Download":
-                        Download(context);
-                        return;
-
-                }
-                if (String.IsNullOrEmpty(fileName))
-                {
-                    switch (paths.Count)
+                case "GET":
+                    if (System.IO.File.Exists(staticFile))
                     {
-                        case 1:
-                            if (path.EndsWith("/"))
-                            {
-                                Process(context);
-                            }
-                            else
-                            {
-                                RKey key = GetResourceKey(paths[0]);
-                                if (key != null)
+                        TransmitFile(context, staticFile);
+                        return;
+                    }
+                    break;
+            }
+
+            var lastPath = paths[paths.Count - 1];
+
+            switch (paths[0])
+            {
+                case "Click":
+                case "Page":
+                    IndexResource(context, "Page.js", "page");
+                    return;
+                case "TEMP":
+                    Temp(context);
+                    return;
+                case "js":
+                    if (lastPath.EndsWith(".js"))
+                    {
+                        context.ContentType = "text/javascript";
+                        var key = lastPath.Substring(0, lastPath.LastIndexOf('.'));
+
+                        switch (key)
+                        {
+                            case "Page":
+                                key = "UMC";
+                                break;
+                            case "UMC.Conf":
                                 {
-                                    if (String.IsNullOrEmpty(key.ResourceKey) == false)
+                                    var ks = ResourceKeys;
+                                    for (var i = ks.Count - 1; i > -1; i--)
                                     {
-                                        context.ContentType = "text/html";
-
-
-                                        using (System.IO.Stream stream = key.Type.Assembly
-                                                           .GetManifestResourceStream(key.ResourceKey))
+                                        var initer = Reflection.CreateInstance(ks[i].Type) as Data.Sql.Initializer;
+                                        if (String.IsNullOrEmpty(initer.ResourceJS) == false)
                                         {
-                                            if (stream != null)
+
+                                            using (System.IO.Stream stream = initer.GetType().GetProperty("ResourceJS").DeclaringType.Assembly
+                                                               .GetManifestResourceStream(initer.ResourceJS))
                                             {
-                                                //context.Output.WriteLine(";");
-                                                //context.Output.Write("/****{0}***/", key.Name);
-                                                //context.Output.WriteLine();
-                                                ////ResourceKeys.m
-                                                UMC.Data.Utility.Copy(stream, context.OutputStream);
-                                                //}
-                                                //else
-                                                //{
-                                                //    Resource(context, "index");
+                                                context.Output.WriteLine("/****{0} Conf****/", initer.Name);
+                                                context.Output.WriteLine(new System.IO.StreamReader(stream).ReadToEnd());
+
                                             }
+
                                         }
-                                    }
-                                    else
-                                    {
-                                        IndexResource(context);
-                                        //Resource(context, "index");
-
-                                    }
-                                }
-                                else
-                                {
-                                    IndexResource(context);
-                                    // Resource(context, "index");
-                                }
-                            }
-                            break;
-                        default:
-                            Process(context);
-                            break;
-                    }
-                }
-                else
-                {
-                    var names = fileName.Split('.');
-                    var configs = UMC.Data.Reflection.Configuration(names[0]);
-                    if (configs != null)
-                    {
-
-                        UMC.Net.INetHandler handler = UMC.Data.Reflection.CreateObject(configs, names[1])
-                                   as
-                        UMC.Net.INetHandler;
-                        if (handler != null)
-                        {
-                            handler.ProcessRequest(context);
-                        }
-                        else
-                        {
-                            Process(context);
-                        }
-                    }
-                    else
-                    {
-                        Process(context);
-                    }
-
-                }
-            }
-            else
-            {
-                if (String.IsNullOrEmpty(fileName))
-                {
-                    IndexResource(context);
-                    //Resource(context, "index");
-                }
-                else
-                {
-                    var names = fileName.Split('.');
-                    RKey key = GetResourceKey(names[0]);
-                    if (key != null)
-                    {
-                        if (fileName.EndsWith(".js"))
-                        {
-                            context.ContentType = "text/javascript";
-
-                            if (String.Equals(key.Name, "UMC") == false)
-                            {
-                                using (System.IO.Stream stream = key.Type.Assembly
-                                                     .GetManifestResourceStream(key.ResourceJS))
-                                {
-                                    if (stream != null)
-                                    {
-                                        context.Output.WriteLine(";");
-                                        context.Output.Write("/****{0}***/", key.Name);
-                                        context.Output.WriteLine();
-                                        context.Output.WriteLine();
-                                        UMC.Data.Utility.Copy(stream, context.OutputStream);
                                     }
                                 }
                                 return;
+                        }
+                        var rKey = GetResourceKey(key);
+                        if (rKey != null)
+                        {
+                            var initer = Reflection.CreateInstance(rKey.Type) as Data.Sql.Initializer;
+                            initer.Resource(context, path);
+                            return;
+                        }
+                    }
+                    break;
+                case "UMC":
+                    if (paths.Count == 1)
+                    {
+                        IndexResource(context, "index");
+                        return;
+                    }
+                    break;
+                default:
+                    {
+                        if (CheckUMC(context))
+                        {
+                            Process(context);
+                            return;
+                        }
+                        if (lastPath.IndexOf('.') > 0)
+                        {
+                            var names = lastPath.Split('.');
+                            var configs = UMC.Data.Reflection.Configuration(names[0]);
+                            if (configs != null)
+                            {
 
+                                UMC.Net.INetHandler handler = UMC.Data.Reflection.CreateObject(configs, names[1])
+                                           as
+                                UMC.Net.INetHandler;
+                                if (handler != null)
+                                {
+                                    handler.ProcessRequest(context);
+                                    return;
+
+                                }
                             }
 
-                            var me = ResourceKeys.GetEnumerator();
-                            while (me.MoveNext())
-                            {
-                                key = me.Current.Value;
-                                if (String.IsNullOrEmpty(key.ResourceJS) == false)
+                        }
+                        switch (context.HttpMethod)
+                        {
+                            case "GET":
+                                var file = Utility.MapPath("App_Data/Static/" + String.Join("/", paths.ToArray()) + ".html");
+                                if (System.IO.File.Exists(file))
                                 {
-
-                                    using (System.IO.Stream stream = key.Type.Assembly
-                                                   .GetManifestResourceStream(key.ResourceJS))
+                                    File(context, file);
+                                    return;
+                                }
+                                if (paths.Count < 4)
+                                {
+                                    var database = Reflection.Configuration("database") ?? new UMC.Configuration.ProviderConfiguration();
+                                    foreach (var key in ResourceKeys)
                                     {
-                                        if (stream != null)
+                                        var initer = Reflection.CreateInstance(key.Type) as Data.Sql.Initializer;
+                                        if (database.Providers.ContainsKey(initer.ProviderName))
                                         {
-                                            context.Output.WriteLine(";");
-                                            context.Output.Write("/****{0}***/", key.Name);
-                                            context.Output.WriteLine();
-                                            context.Output.WriteLine();
-                                            context.Output.WriteLine(new System.IO.StreamReader(stream).ReadToEnd());
-                                            //UMC.Data.Utility.Copy(stream, context.OutputStream);
+                                            if (initer.Resource(context, path))
+                                            {
+                                                return;
+                                            }
                                         }
                                     }
+                                    if (paths.Count < 2)
+                                    {
+                                        IndexResource(context, "index");
+                                        return;
+                                    }
                                 }
-                            }
-
-
-
-                        }
-                        else
-                        {
-                            var rkeys = key.ResourceKey.Split('.');
-                            rkeys[rkeys.Length - 2] = names[1];
-                            context.ContentType = "text/html";
-                            using (System.IO.Stream stream = key.Type.Assembly
-                                                                        .GetManifestResourceStream(String.Join(".", rkeys)))
-                            {
-                                if (stream != null)
-                                {
-                                    UMC.Data.Utility.Copy(stream, context.OutputStream);
-                                }
-                                else
-                                {
-                                    //Resource(context, "index");
-                                    IndexResource(context);
-                                }
-                            }
+                                break;
+                            default:
+                                Process(context);
+                                return;
                         }
                     }
-                    else
-                    {
-                        IndexResource(context);
-                        //Resource(context, "index");
-                    }
+                    break;
+
+            }
+
+            Process(context);
+
+
+        }
+        void ResourceKey(Net.NetContext context, String path)
+        {
+            foreach (var key in ResourceKeys)
+            {
+                var initer = Reflection.CreateInstance(key.Type) as Data.Sql.Initializer;
+
+                var node = Reflection.GetDataProvider("database", initer.ProviderName);
+                if (node == null)
+                {
+                    IndexResource(context, "index");
+                    return;
+                }
+                if (initer.Resource(context, path))
+                {
+                    return;
                 }
             }
-
+            context.Redirect(Data.WebResource.Instance().WebDomain());
         }
-        void Resource(Net.NetContext context, string key)
+        void IndexResource(Net.NetContext context, String key)
         {
-            context.ContentType = "text/html";
-            using (System.IO.Stream stream = typeof(WebServlet).Assembly
-                               .GetManifestResourceStream(String.Format("UMC.Data.Resources.{0}.html", key)))
-            {
-                UMC.Data.Utility.Copy(stream, context.OutputStream);
+            var ls = context.RawUrl.Split(new String[] { "/" }, StringSplitOptions.RemoveEmptyEntries);
+            var root = ls.Length == 0 ? "UMC" : ls[0];
 
-            }
+            this.IndexResource(context, "/" + root, key);
         }
-        void IndexResource(Net.NetContext context)
+        protected void IndexResource(Net.NetContext context, String root, String key)
         {
             context.ContentType = "text/html";
             using (System.IO.Stream stream = typeof(WebServlet).Assembly
@@ -643,21 +796,25 @@ namespace UMC.Web
                 context.Output.WriteLine(new System.IO.StreamReader(stream).ReadToEnd().Trim());
 
             }
-            context.Output.Write("    <script>WDK.POS.Config({posurl: ['/");
-            var ls = context.RawUrl.Split(new String[] { "/" }, StringSplitOptions.RemoveEmptyEntries);
-            if (ls.Length == 0)
+            if (String.IsNullOrEmpty(root))
             {
-                context.Output.Write("UMC");
+                context.Output.WriteLine("    <script src=\"/js/UMC.js\"></script>");
+
+            }
+            else if (root.EndsWith(".js"))
+            {
+
+                context.Output.WriteLine("    <script src=\"/js/{0}\"></script>", root);
             }
             else
             {
-
-                context.Output.Write(ls[0]);
+                context.Output.Write("    <script>WDK.POS.Config({posurl: ['");
+                context.Output.Write(root);
+                context.Output.WriteLine("/', WDK.cookie('device') || WDK.cookie('device', WDK.uuid())].join('')});");
+                context.Output.WriteLine("</script>");
             }
-            context.Output.WriteLine("/', WDK.cookie('device') || WDK.cookie('device', WDK.uuid())].join('')});</script>");
-            context.Output.WriteLine();
             using (System.IO.Stream stream = typeof(WebServlet).Assembly
-                               .GetManifestResourceStream(String.Format("UMC.Data.Resources.index.html")))
+                               .GetManifestResourceStream(String.Format("UMC.Data.Resources.{0}.html", key)))
             {
                 context.Output.WriteLine(new System.IO.StreamReader(stream).ReadToEnd());
 
@@ -671,8 +828,9 @@ namespace UMC.Web
             List<WebMeta> metas = new List<WebMeta>();
             if (WebRuntime.webFactorys.Count > 0)
             {
-                foreach (Type t in WebRuntime.webFactorys)
+                foreach (var wt in WebRuntime.webFactorys)
                 {
+                    var t = wt.Type;
                     WebMeta meta = new WebMeta();
                     meta.Put("type", t.FullName);
                     meta.Put("name", "." + t.Name);
@@ -694,8 +852,9 @@ namespace UMC.Web
                 while (em.MoveNext())
                 {
                     var tls = em.Current.Value;
-                    foreach (Type t in tls)
+                    foreach (var wt in tls)
                     {
+                        var t = wt.Type;
                         WebMeta meta = new WebMeta();
                         meta.Put("type", t.FullName);
                         meta.Put("name", em.Current.Key + ".");

@@ -103,14 +103,25 @@ namespace UMC.Security
             var sessionKey = Data.Utility.Guid(SessionKey, true).Value;
             if (sessionKey != Guid.Empty)
             {
-
                 var session = new Configuration.Session<Security.AccessToken>(sessionKey.ToString());
                 if (session.Value != null)
                 {
                     var auth = session.Value;
                     auth.Id = sessionKey;
                     auth.ContentType = session.ContentType;
-                    return Authorization(auth, auth.Identity());
+
+                    var passDate = Data.Utility.TimeSpan();
+                    if (auth.Timeout == 0 || (auth.ActiveTime + auth.Timeout > passDate))
+                    {
+                        if (auth.ActiveTime < passDate - 600)
+                        {
+                            Data.Reflection.SetProperty(auth, "ActiveTime", passDate);
+
+                            this.Activation(auth);
+                        }
+
+                        return UMC.Security.Principal.Create(auth.Identity(), auth);
+                    }
 
                 }
                 var user = UMC.Security.Identity.Create(sessionKey, "?", String.Empty);
@@ -133,23 +144,7 @@ namespace UMC.Security
         /// <param name="accountType"></param>
         /// <returns></returns>
         public abstract UMC.Security.Identity Identity(string name, int accountType);
-        /// <summary>
-        /// 登录到线程
-        /// </summary>
-        /// <param name="id"></param>
-        /// <param name="auth"></param>
-        /// <returns></returns>
-        public virtual UMC.Security.Principal Authorization(Security.AccessToken auth, UMC.Security.Identity id)
-        {
-            var passDate = Data.Utility.TimeSpan();// DateTime.Now.AddMinutes(-10));
-            if (auth.ActiveTime < passDate - 600)
-            {
-                Data.Reflection.SetProperty(auth, "ActiveTime", passDate);
 
-                this.Activation(auth);
-            }
-            return UMC.Security.Principal.Create(id, auth);
-        }
         /// <summary>
         /// 变换密码
         /// </summary>
@@ -213,11 +208,42 @@ namespace UMC.Security
         /// <returns></returns> 
         public abstract bool AddRole(string username, params string[] roles);
 
-        /// <summary>
-        /// 激活用户
-        /// </summary>
-        /// <param name="token">登录身份票据</param>
-        public abstract void Activation(UMC.Security.AccessToken token);
+        public virtual void Activation(Security.AccessToken token)
+        {
+            int cuttime = UMC.Data.Utility.TimeSpan();
+            if (token.Timeout > 0 && ((token.ActiveTime ?? 0) + token.Timeout) < cuttime)
+            {
+                var at = AccessToken.Create(UMC.Security.Identity.Create(token.Id.Value, "?", "Guest"), token.Id.Value, token.ContentType, 0);
+                var sesion = new Configuration.Session<UMC.Security.AccessToken>(at, token.Id.ToString());
+                sesion.ContentType = at.ContentType;
+                sesion.Commit(token.Id.Value);
+                return;
+
+            }
+
+
+            switch (token.Username ?? "?")
+            {
+                case "#":
+                case "?":
+                    break;
+                default:
+                    if (String.IsNullOrEmpty(token.Username) == false)
+                    {
+                        UMC.Data.Database.Instance().ObjectEntity<UMC.Data.Entities.User>()
+                            .Where.And(new UMC.Data.Entities.User { Username = token.Username }).Entities
+                            .Update(new UMC.Data.Entities.User { ActiveTime = DateTime.Now, SessionKey = token.Id.Value });
+
+                    }
+                    break;
+            }
+            if (token.UId.HasValue)
+            {
+                var sesion = new Configuration.Session<UMC.Security.AccessToken>(token, token.Id.ToString());
+                sesion.ContentType = token.ContentType;
+                sesion.Commit(token.UId.Value);
+            }
+        }
 
 
     }

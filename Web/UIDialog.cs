@@ -121,31 +121,31 @@ namespace UMC.Web
             }
             return p;
         }
-        public WebMeta CreateMenu(string text, string model, string cmd, string value)
-        {
-            var p = new WebMeta();
-            p["model"] = model;
-            if (String.IsNullOrEmpty(value) == false)
-            {
-                p["send"] = value;
-            }
-            p["text"] = text;
-            p["cmd"] = cmd;
-            return p;
-        }
-        public static WebMeta CreateMenu(string text, string model, string cmd, WebMeta param)
-        {
+        //public WebMeta CreateMenu(string text, string model, string cmd, string value)
+        //{
+        //    var p = new WebMeta();
+        //    p["model"] = model;
+        //    if (String.IsNullOrEmpty(value) == false)
+        //    {
+        //        p["send"] = value;
+        //    }
+        //    p["text"] = text;
+        //    p["cmd"] = cmd;
+        //    return p;
+        //}
+        //public static WebMeta CreateMenu(string text, string model, string cmd, WebMeta param)
+        //{
 
-            var p = new WebMeta();
-            if (param != null)
-            {
-                p.Set("send", param);
-            }
-            p["model"] = model;
-            p["text"] = text;
-            p["cmd"] = cmd;
-            return p;
-        }
+        //    var p = new WebMeta();
+        //    if (param != null)
+        //    {
+        //        p.Set("send", param);
+        //    }
+        //    p["model"] = model;
+        //    p["text"] = text;
+        //    p["cmd"] = cmd;
+        //    return p;
+        //}
         protected bool IsAsyncData
         {
             get;

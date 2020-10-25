@@ -189,7 +189,7 @@ namespace UMC.Data
             var node = Reflection.Instance().DatabaseProvider(providerName, pKey);
             if (node == null)
             {
-                throw new SystemException(String.Format("Œ¥≈‰÷√°∞{0}°±", providerName));
+                throw new Data.Sql.DbException(new Exception(String.Format("Œ¥≈‰÷√°∞{0}°±", providerName)), null);
 
             }
             var provider = Reflection.CreateObject(node) as DbProvider;

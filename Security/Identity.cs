@@ -88,7 +88,7 @@ namespace UMC.Security
 
         public string AuthenticationType
         {
-            get { return "WebADNuke"; }
+            get { return "UMC"; }
         }
 
         public bool IsAuthenticated

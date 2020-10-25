@@ -125,10 +125,7 @@ namespace UMC.Configuration
                     providers = GetProvider(System.IO.File.OpenRead(filename));
                     _cache.Add(filename, providers);
                 }
-            }
-            else
-            {
-                throw new System.IO.FileNotFoundException("没有找到文件", filename);
+
             }
             //}
             return providers;

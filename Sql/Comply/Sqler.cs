@@ -452,7 +452,7 @@ namespace UMC.Data.Sql
             var l = -1;
             ISqler d = this;
             var list = new List<int>();
-
+            
 
             d.Execute(sc =>
            {

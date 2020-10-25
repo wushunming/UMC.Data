@@ -56,21 +56,6 @@ namespace UMC.Data.Entities
 
 
     }
-    public enum ProposalType
-    {
-        /// <summary>
-        /// 有效
-        /// </summary>
-        Effective = 0,
-        /// <summary>
-        /// 无效
-        /// </summary>
-        Invalid = 1,
-        /// <summary>
-        /// 不良信息
-        /// </summary>
-        Unhealthy = 3
-    }
     public class Proposal
     {
         public Guid? ref_id
@@ -86,16 +71,6 @@ namespace UMC.Data.Entities
             get;
             set;
         }
-        public string Content
-        {
-            get;
-            set;
-        }
-        public ProposalType? Type
-        {
-            get;
-            set;
-        }
         public DateTime? CreationDate
         {
             get;
@@ -106,60 +81,11 @@ namespace UMC.Data.Entities
             get;
             set;
         }
+
+        public int? Type
+        {
+            get; set;
+        }
     }
 
-    /// <summary>
-    /// 关注
-    /// </summary>
-    public class Attention
-    {
-        /// <summary>
-        /// ME
-        /// </summary>
-        public Guid? Id
-        {
-            get;
-            set;
-        }
-        /// <summary>
-        /// 用户Id
-        /// </summary>
-        public Guid? user_id
-        {
-            get;
-            set;
-        }
-        /// <summary>
-        /// 关注类型
-        /// </summary>
-        public AttentionType? Type
-        {
-            get;
-            set;
-        }
-        /// <summary>
-        /// 创建时间
-        /// </summary>
-        public DateTime? CreationDate
-        {
-            get;
-            set;
-        }
-        /// <summary>
-        /// 是否互听
-        /// </summary>
-        public bool? IsEachOther
-        {
-            get;
-            set;
-        }
-        /// <summary>
-        /// 是否好友
-        /// </summary>
-        public bool? IsFriend
-        {
-            get;
-            set;
-        }
-    }
 }

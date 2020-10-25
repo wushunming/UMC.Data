@@ -98,6 +98,7 @@ namespace UMC.Configuration
 
         public void Commit(T value, params Guid[] ids)
         {
+            this.Value = value;
             this.Commit(ids);
         }
         /// <summary>
@@ -105,8 +106,6 @@ namespace UMC.Configuration
         /// </summary>
         public void Commit(params Guid[] ids)
         {
-
-
             var session = new Session
             {
                 UpdateTime = DateTime.Now,
@@ -123,9 +122,29 @@ namespace UMC.Configuration
                 session.Content = UMC.Data.JSON.Serialize(this.Value, "ts");
             }
             this.ModifiedTime = DateTime.Now;
-            UMC.Data.Database.Instance().ObjectEntity<Session>()
-            .Where.And().Equal(new Session { SessionKey = this.Key })
-            .Entities.IFF(e => e.Update(session) == 0, e => e.Insert(session));
+            if (ids.Length > 1)
+            {
+                UMC.Data.Database.Instance().ObjectEntity<Session>()
+                .Where.And().Equal(new Session
+                {
+                    SessionKey = this.Key
+                }).Or().Contains().And().Equal(new Session
+                {
+                    ContentType = ContentType,
+                    user_id = session.user_id
+                }).Entities
+                .IFF(e => e.Delete() >= 0, e => e.Insert(session));
+            }
+            else
+            {
+                UMC.Data.Database.Instance().ObjectEntity<Session>()
+                .Where.And().Equal(new Session
+                {
+                    SessionKey = this.Key
+                }).Entities
+                .IFF(e => e.Update(session) == 0, e => e.Insert(session));
+            }
+
         }
     }
 

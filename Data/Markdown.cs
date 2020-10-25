@@ -27,31 +27,35 @@ namespace UMC.Data
                 }
             }
             int size = 26 - (i - 1) * 2;
-            dataText.Append(text.Substring(i).Trim());
-            data.Put("Key", i);
-            //data.Put("Key", text.Substring(i).Trim());
-            style.Name("m" + data.Count.ToString(), new UIStyle().Bold().Size(size));
 
-            this.Append();
+            var cell = UICell.Create("CMSText", new WebMeta().Put("text", text.Substring(i).Trim()).Put("Key", i));
+            cell.Format.Put("text", "{text}");
+            cell.Style.Bold().Size(size);
+            cells.Add(cell);
         }
         private Markdown() { }
         class Highlighter
         {
-            static string[] keys = new string[] { "abstract", "+", "-", "*", "/", "%", "var", "instanceof", "extern", "private", "protected", "public", "namespace", "class", "for", "if", "else", "async", "while", "switch", "case", "using", "get", "return", "null", "void", "int", "string", "float", "char", "this", "set", "new", "true", "false", "const", "static", "internal", "extends", "super", "import", "default", "break", "try", "catch", "finally", "implements", "package", "final" };
+            static string[] keys = new string[] { "abstract", "+", "-", "*", "/", "%", "var", "function", "instanceof", "extern", "private", "protected", "public", "namespace", "class", "for", "if", "else", "async", "while", "switch", "case", "using", "get", "return", "null", "void", "int", "string", "float", "char", "this", "set", "new", "true", "false", "const", "static", "internal", "extends", "super", "import", "default", "break", "try", "catch", "finally", "implements", "package", "final", "throws" };
 
             WebMeta data = new WebMeta();
             UIStyle style = new UIStyle();
             StringBuilder dataText = new StringBuilder();
 
 
-            public UICell Transform(String text, string type)
+
+            public UICell Paster(String text, string type)
             {
-                switch (type.ToLower())
+                switch ((type ?? "").ToLower().Trim())
                 {
+                    case "text":
                     case "shell":
+                        dataText.Append(text);
+                        break;
                     case "html":
                     case "xml":
-                        dataText.Append(text);
+                        CheckXml(text);
+
                         break;
                     default:
                         Check(text);
@@ -71,6 +75,10 @@ namespace UMC.Data
                     sb.Append("}");
                 }
                 var cell = UICell.Create("CMSCode", data);
+                if (String.IsNullOrEmpty(type) == false)
+                {
+                    data.Put("type", type);
+                }
                 cell.Format.Put("text", sb.ToString());
                 cell.Style.Copy(style);
 
@@ -155,6 +163,241 @@ namespace UMC.Data
                     data.Put("h" + data.Count, dataText.ToString());
                     dataText.Clear();
                 }
+            }
+            void Append2()
+            {
+                if (dataText.Length > 0)
+                {
+
+                    data.Put("h" + data.Count, dataText.ToString());
+                    dataText.Clear();
+                }
+            }
+            void CheckXml(string code)
+            {
+                int index = 0;
+                while (index < code.Length)
+                {
+                    switch (code[index])
+                    {
+                        case '<':
+                            Append2();
+                            var k = index + 10 < code.Length ? code.Substring(index, 10) : code.Substring(index);
+                            int end = 0;
+                            if (k.StartsWith("<!--"))
+                            {
+                                end = code.IndexOf("-->", index);
+
+                                style.Name("h" + data.Count).Color(0x008000);
+                                if (end == -1)
+                                {
+
+                                    data.Put("h" + data.Count, code.Substring(index));
+                                    return;
+                                }
+                                else
+                                {
+
+                                    data.Put("h" + data.Count, code.Substring(index, end - index + 3));
+                                }
+                                index = end + 3;
+                            }
+                            else if (k.StartsWith("<?"))
+                            {
+
+                                end = code.IndexOf(">", index);
+
+
+                                style.Name("h" + data.Count).Color(0x999);
+                                if (end == -1)
+                                {
+
+                                    data.Put("h" + data.Count, code.Substring(index));
+                                    return;
+                                }
+                                else
+                                {
+
+                                    data.Put("h" + data.Count, code.Substring(index, end - index + 1));
+                                }
+                                index = end + 1;
+                            }
+                            else if (k.StartsWith("<![CDATA["))
+                            {
+
+                                end = code.IndexOf("]]>", index);
+
+                                style.Name("h" + data.Count).Color(0x999);
+                                if (end == -1)
+                                {
+
+                                    data.Put("h" + data.Count, code.Substring(index));
+                                    return;
+                                }
+                                else
+                                {
+
+                                    data.Put("h" + data.Count, code.Substring(index, end - index + 1));
+                                }
+                                index = end + 3;
+                            }
+                            else
+                            {
+                                if (code.Length > index + 1)
+                                {
+                                    switch (code[index + 1])
+                                    {
+                                        case '<':
+                                        case ' ':
+                                            dataText.Append(code[index]);
+                                            index++;
+                                            continue;
+
+
+                                    }
+                                }
+                                end = code.IndexOf(">", index);
+                                if (end > index)
+                                {
+                                    var Html = code.Substring(index, end - index + 1);
+                                    index = end + 1;
+
+                                    var tagIndex = Html.IndexOf(' ');
+                                    style.Name("h" + data.Count).Color(0x1890ff);
+                                    if (tagIndex > -1)
+                                    {
+
+                                        data.Put("h" + data.Count, Html.Substring(0, tagIndex));
+
+                                    }
+                                    else
+                                    {
+                                        data.Put("h" + data.Count, Html);
+                                        tagIndex = Html.Length;
+
+
+                                    }
+                                    while (tagIndex < Html.Length)
+                                    {
+                                        switch (Html[tagIndex])
+                                        {
+                                            case '=':
+                                            case ' ':
+                                                if (dataText.Length > 0)
+                                                {
+                                                    switch (dataText[dataText.Length - 1])
+                                                    {
+                                                        case '=':
+                                                        case ' ':
+                                                            break;
+                                                        default:
+                                                            style.Name("h" + data.Count).Color(0x315efb);
+
+                                                            data.Put("h" + data.Count, dataText.ToString());
+                                                            dataText.Clear();
+
+
+
+                                                            break;
+                                                    }
+                                                }
+
+
+                                                dataText.Append(Html[tagIndex]);
+
+
+
+                                                break;
+                                            case '/':
+                                            case '>':
+                                                if (dataText.Length > 0)
+                                                {
+
+                                                    switch (dataText[dataText.Length - 1])
+                                                    {
+                                                        case '=':
+                                                        case ' ':
+
+                                                            data.Put("h" + data.Count, dataText.ToString());
+                                                            dataText.Clear();
+                                                            break;
+                                                        default:
+
+
+                                                            style.Name("h" + data.Count).Color(0x315efb);
+                                                            data.Put("h" + data.Count, dataText.ToString());
+                                                            dataText.Clear();
+
+
+                                                            break;
+                                                    }
+
+
+                                                }
+                                                if (Html[tagIndex] == '/')
+                                                {
+
+                                                    style.Name("h" + data.Count).Color(0x1890ff);
+                                                    data.Put("h" + data.Count, Html.Substring(tagIndex));
+
+                                                    tagIndex = Html.Length;
+
+
+                                                }
+                                                else
+                                                {
+                                                    style.Name("h" + data.Count).Color(0x1890ff);
+                                                    data.Put("h" + data.Count, ">");
+                                                }
+                                                break;
+                                            case '\'':
+                                            case '"':
+                                                data.Put("h" + data.Count, dataText.ToString());
+                                                dataText.Clear();
+                                                int dend = Html.IndexOf(Html[tagIndex], tagIndex + 1);
+                                                style.Name("h" + data.Count).Color(0xc00);
+                                                if (dend == -1)
+                                                {
+                                                    dend = Html.Length;
+                                                    data.Put("h" + data.Count, Html.Substring(tagIndex));
+                                                }
+                                                else
+                                                {
+                                                    data.Put("h" + data.Count, Html.Substring(tagIndex, dend - tagIndex + 1));
+                                                }
+
+
+                                                tagIndex = dend;
+                                                break;
+                                            default:
+                                                if (dataText.Length > 0)
+                                                {
+                                                    switch (dataText[dataText.Length - 1])
+                                                    {
+                                                        case '=':
+                                                        case ' ':
+
+                                                            data.Put("h" + data.Count, dataText.ToString());
+                                                            dataText.Clear();
+                                                            break;
+                                                    }
+                                                }
+
+                                                dataText.Append(Html[tagIndex]);
+
+                                                break;
+                                        }
+                                        tagIndex++;
+                                    }
+                                    continue;
+                                }
+                            }
+                            break;
+                    }
+                    dataText.Append(code[index]);
+                    index++;
+                }
+
             }
             void Check(string code)
             {
@@ -276,14 +519,11 @@ namespace UMC.Data
                                             continue;
                                         }
                                 }
-                                //}
-                                //else
-                                //{
-                                //    index++;
                             }
                             break;
                         case ' ':
                         case '.':
+                        case ',':
                             CheckWork();
                             break;
                         case '(':
@@ -295,6 +535,10 @@ namespace UMC.Data
                 }
 
             }
+        }
+        public static UICell Highlight(String text, string type)
+        {
+            return new Highlighter().Paster(text, type);
         }
         public static UICell[] Transform(String text)
         {
@@ -344,14 +588,7 @@ namespace UMC.Data
         {
             if (dataText.Length > 0)
             {
-                //if (data.Count == 0)
-                //{
-                //    data.Put("m" + data.Count.ToString(), dataText.ToString().TrimStart());
-                //}
-                //else
-                //{
                 data.Put("m" + data.Count.ToString(), dataText.ToString());
-                //}
                 dataText = new StringBuilder();
             }
         }
@@ -444,7 +681,7 @@ namespace UMC.Data
                                 String content = text.Substring(index, end - index).Trim('[', ']');
                                 if (content.IndexOf('\n') == -1)
                                 {
-                                    if (text[end + 1] == '(')
+                                    if (text.Length > end + 1 && text[end + 1] == '(')
                                     {
 
                                         int end2 = text.IndexOf(")", end + 1);
@@ -464,21 +701,29 @@ namespace UMC.Data
                                     }
                                     else
                                     {
-                                        AppendData();
-                                        if (webRel.ContainsKey(content))
+                                        if (String.IsNullOrEmpty(content.Trim()) == false)
                                         {
-                                            style.Name("m" + data.Count.ToString(), new UIStyle().Click(new UIClick(webRel[content]) { Key = "Url" }));
+                                            AppendData();
+
+                                            if (webRel.ContainsKey(content))
+                                            {
+                                                style.Name("m" + data.Count.ToString(), new UIStyle().Click(new UIClick(webRel[content]) { Key = "Url" }));
+                                            }
+                                            else
+                                            {
+                                                var click = new UIClick(content) { Key = "Url" };
+                                                this.links.Add(click);
+                                                style.Name("m" + data.Count.ToString(), new UIStyle().Click(click));
+
+                                            }
+                                            data.Put("m" + data.Count.ToString(), content);
                                         }
                                         else
                                         {
-                                            var click = new UIClick(content) { Key = "Url" };
-                                            this.links.Add(click);
-                                            //click.Value
-                                            style.Name("m" + data.Count.ToString(), new UIStyle().Click(click));
-
+                                            dataText.Append("[");
+                                            dataText.Append(content);
+                                            dataText.Append("]");
                                         }
-                                        data.Put("m" + data.Count.ToString(), content);
-
 
                                         index = end + 1;
 
@@ -545,7 +790,7 @@ namespace UMC.Data
                                 {
                                     AppendData();
                                     style.Name("m" + data.Count.ToString(), new UIStyle().UnderLine());
-                                    data.Put("m" + data.Count.ToString(), content.Trim('*'));
+                                    data.Put("m" + data.Count.ToString(), content.Trim('~'));
                                     index = end + 1;
 
                                     continue;
@@ -727,7 +972,12 @@ namespace UMC.Data
                                     var htype = content.Substring(3, hindex - 3).Trim();
                                     content = content.Substring(hindex + 1);
 
-                                    cells.Add(new Highlighter().Transform(content, htype));
+                                    var cell = UICell.Create("CMSCode", new WebMeta().Put("code", content).Put("type", htype));
+
+                                    cell.Format.Put("text", "{code}");
+
+
+                                    cells.Add(cell);
                                     index = text.IndexOf('\n', end + 1) + 1;
 
                                     continue;
@@ -782,18 +1032,18 @@ namespace UMC.Data
                                             while (isGO)
                                             {
                                                 isGO = false;
-                                                int end3 = text.IndexOf('\n', end2 + 1);//.Trim();
+                                                int end3 = text.IndexOf('\n', end2 + 1);
+
 
                                                 String conent3 = end3 > 0 ? text.Substring(end2 + 1, end3 - end2 - 1).Trim() : text.Substring(end2 + 1).Trim();
                                                 if (conent3.StartsWith("|") && conent3.EndsWith("|"))
                                                 {
                                                     isGO = true;
                                                     grids.Add(conent3);
-                                                    end2 = end3;
+                                                    end2 = end3 > 0 ? end3 : text.Length - 1;
                                                 }
                                             }
                                             this.Grid(grids);
-                                            //Check(text, end2 + 1);
                                             index = end2 + 1;
                                             continue;
 
@@ -849,7 +1099,6 @@ namespace UMC.Data
 
                 index = this.CheckRow(text, index);
             }
-            //return index;
         }
     }
 }

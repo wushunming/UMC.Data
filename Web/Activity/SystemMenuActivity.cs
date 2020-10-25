@@ -25,45 +25,45 @@ namespace UMC.Web.Activity
             var factory = new DbFactory(Database.Instance().DbProvider);
             factory.ObjectEntity<Data.Entities.Menu>().Delete();
             //factory.ObjectEntity<>
-            new System.Threading.Tasks.Task(() =>
-            {
-                var Initializers = Data.Sql.Initializer.Initializers();
-                try
-                {
-                    var now = DateTime.Now;
+            UMC.Data.Reflection.Start(() =>
+               {
+                   var Initializers = Data.Sql.Initializer.Initializers();
+                   try
+                   {
+                       var now = DateTime.Now;
 
-                    var database = Reflection.Configuration("Database") ?? new UMC.Configuration.ProviderConfiguration();
-                    //var count = false;
+                       var database = Reflection.Configuration("Database") ?? new UMC.Configuration.ProviderConfiguration();
+                       //var count = false;
 
-                    foreach (var initer in Initializers)
-                    {
-                        if (database.Providers.ContainsKey(initer.ProviderName))
-                        {
+                       foreach (var initer in Initializers)
+                       {
+                           if (database.Providers.ContainsKey(initer.ProviderName))
+                           {
 
-                            log.Info("正在检测", initer.Caption);
-                            initer.Menu(new Hashtable(), factory);
-                        }
+                               log.Info("正在检测", initer.Caption);
+                               initer.Menu(new Hashtable(), factory);
+                           }
 
-                        else
-                        {
-                            log.Info("未安装", initer.Caption);
-                        }
-
-
-                    }
+                           else
+                           {
+                               log.Info("未安装", initer.Caption);
+                           }
 
 
-                    log.End("检测菜单已完成");
+                       }
 
-                }
-                catch (Exception ex)
-                {
-                    log.End("检测失败");
-                    log.Info(ex.Message);
 
-                }
+                       log.End("检测菜单已完成");
 
-            }).Start();
+                   }
+                   catch (Exception ex)
+                   {
+                       log.End("检测失败");
+                       log.Info(ex.Message);
+
+                   }
+
+               });//.Start();
 
 
             response.Redirect("System", "Log", Key);

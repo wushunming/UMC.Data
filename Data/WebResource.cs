@@ -29,13 +29,29 @@ namespace UMC.Data
         {
             if (_Instance == null)
             {
-                _Instance = UMC.Data.Reflection.CreateObject("WebResource") as WebResource;
+                var pc = Reflection.Configuration("assembly");
+                if (pc == null)
+                {
+                    pc = new Configuration.ProviderConfiguration();
+
+
+                }
+                var provider = pc["WebResource"];
+                if (provider == null)
+                {
+                    provider = Data.Provider.Create("WebResource", "UMC.Data.WebResource");
+                    provider.Attributes["authkey"] = Utility.Guid(Guid.NewGuid());
+                    provider.Attributes["secret"] = Utility.Guid(Guid.NewGuid());
+                    pc.Providers[provider.Name] = provider;
+                    pc.WriteTo(Reflection.AppDataPath("UMC\\assembly.xml"));
+                    Configuration.ProviderConfiguration.Cache.Clear();
+                }
+                _Instance = UMC.Data.Reflection.CreateObject(provider) as WebResource;
                 if (_Instance == null)
                 {
                     _Instance = new WebResource();
-                    var provider = Data.Provider.Create("WebResource", "UMC.Data.WebResource");
-                    provider.Attributes["authkey"] = "bdc204c3-b01f-4b93-a695-c270dd7f474b";
                     UMC.Data.Reflection.SetProperty(_Instance, "Provider", provider);
+
                 }
             }
             return _Instance;
@@ -45,10 +61,42 @@ namespace UMC.Data
         {
             return this.Provider["domain"] ?? "/";
         }
+        public virtual string APIHost()
+        {
+            return this.Provider["host"];
+        }
+        public virtual string AppSecret(bool isRefresh = false)
+        {
+            if (isRefresh)
+            {
+                var pc = Reflection.Configuration("assembly");
+                if (pc == null)
+                {
+                    pc = new Configuration.ProviderConfiguration();
+
+                }
+                var provider = pc["WebResource"];
+                if (provider == null)
+                {
+                    provider = Data.Provider.Create("WebResource", "UMC.Data.WebResource");
+                }
+
+                this.Provider.Attributes["secret"] = provider.Attributes["secret"] = Utility.Guid(Guid.NewGuid());
+                pc.Providers[provider.Name] = provider;
+                pc.WriteTo(Reflection.AppDataPath("UMC\\assembly.xml"));
+                Configuration.ProviderConfiguration.Cache.Clear();
+            }
+            return this.Provider["secret"];
+
+        }
+        public virtual string TempDomain()
+        {
+            return "http://oss.365lu.cn/";
+
+        }
         public virtual string AccessToken(bool isRefresh = false)
         {
-            return "";
-
+            return String.Empty;
         }
 
         public virtual bool SubmitCheck(string appid)
@@ -151,23 +199,54 @@ namespace UMC.Data
         {
             return String.Empty;
         }
-        public virtual String Transfer(Stream stream, string targetKey)
+        public virtual void Transfer(Stream stream, string targetKey)
         {
-            return String.Empty;
+            if (targetKey.StartsWith("bin/", StringComparison.CurrentCultureIgnoreCase))
+            {
+                return;
+            }
+            else if (targetKey.StartsWith("app_data/", StringComparison.CurrentCultureIgnoreCase))
+            {
+                return;
+            }
+            else if (targetKey.StartsWith("UserResources/") || targetKey.StartsWith("images/"))
+            {
+                Utility.Copy(stream, Utility.MapPath("App_Data/Static/" + targetKey));
+            }
+            else if (targetKey.IndexOf('.') == -1)
+            {
+                Utility.Copy(stream, Utility.MapPath("App_Data/Static/" + targetKey + ".html"));
+
+            }
         }
         public virtual string Download(string tempKey)
         {
-            //if ()
-            //string path = UMC.Data.Utility.MapPath(String.Format("App_Data\\Temp\\{0}\\{1}", UMC.Data.Utility.GetRoot(uri), Utility.GetUsername()));
-            //if (!System.IO.Directory.Exists(path))
-            //{
-            //    System.IO.Directory.CreateDirectory(path);
-            //}
-            return String.Format("/Download/{0}", tempKey.Replace("\\", "/"));
+            return String.Format("/TEMP/{0}", tempKey.Replace("\\", "/"));
 
         }
         public virtual void Transfer(Uri soureUrl, string targetKey)
         {
+            if (targetKey.StartsWith("bin/", StringComparison.CurrentCultureIgnoreCase))
+            {
+                return;
+            }
+            else if (targetKey.StartsWith("app_data/", StringComparison.CurrentCultureIgnoreCase))
+            {
+                return;
+            }
+            else if (targetKey.StartsWith("UserResources/") || targetKey.StartsWith("images/"))
+            {
+                var httpClient = new UMC.Net.HttpClient();
+
+                Utility.Copy(httpClient.GetStreamAsync(soureUrl).Result, Utility.MapPath(targetKey));
+            }
+            else if (targetKey.IndexOf('.') == -1)
+            {
+                var httpClient = new UMC.Net.HttpClient();
+
+                Transfer(httpClient.GetStreamAsync(soureUrl).Result, targetKey);
+
+            }
         }
 
 
@@ -194,7 +273,7 @@ namespace UMC.Data
                     vpath = code;// + "/";
                 }
 
-                return String.Format("http://image.365lu.cn/{0}{1}", vpath, vUrl);
+                return String.Format("https://image.365lu.cn/{0}{1}", vpath, vUrl);
 
 
             }
@@ -215,7 +294,7 @@ namespace UMC.Data
                 String sts = String.Format("https://ali.365lu.cn/OSS/Transfer/{0}", this.Provider["authkey"]);
 
 
-                System.Net.Http.HttpClient httpClient = new System.Net.Http.HttpClient();
+                var httpClient = new UMC.Net.HttpClient();
                 var res = httpClient.PostAsync(sts, new System.Net.Http.StringContent(JSON.Serialize(new Web.WebMeta().Put("src", uri.AbsoluteUri, "key", key)))).Result;
 
             }
@@ -229,14 +308,21 @@ namespace UMC.Data
 
         public virtual void Push(Guid tid, params object[] objs)
         {
+            this.Push(new Guid[] { tid }, objs);
         }
 
-        public virtual void Push(Guid[] tid, params object[] objs)
+        public virtual void Push(Guid[] devices, params object[] objs)
         {
-        }
-        public virtual void Push(string tag, params object[] objs)
-        {
+            String vpath = this.Provider["authkey"];
+            if (String.IsNullOrEmpty(vpath) == false && devices.Length > 0 && objs.Length > 0)
+            {
+                String sts = String.Format("https://ali.365lu.cn/OSS/Push/{0}", this.Provider["authkey"]);
 
+
+                var httpClient = new UMC.Net.HttpClient();
+                var res = httpClient.PostAsync(sts, new System.Net.Http.StringContent(JSON.Serialize(new Web.WebMeta().Put("device", devices).Put("data", objs)))).Result;
+
+            }
         }
 
 

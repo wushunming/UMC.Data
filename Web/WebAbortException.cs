@@ -15,6 +15,9 @@ namespace UMC.Web
     }
     class EventType
     {
+        /// <summary>
+        /// 对话框
+        /// </summary>
         public const string AsyncDialog = "AsyncDialog";
 
         public const string Complete = "Complete";

@@ -4,6 +4,10 @@ using System.Runtime.CompilerServices;
 using UMC.Data.Sql;
 using System.Collections;
 using UMC.Configuration;
+using UMC.Web;
+using System.Collections.Generic;
+using System.IO;
+
 namespace UMC.Data
 {
     /// <summary>
@@ -11,43 +15,143 @@ namespace UMC.Data
     /// </summary>
     public class Reflection : UMC.Configuration.DataProvider
     {
-        private static readonly Reflection reflection;
+        internal protected static Reflection instance;
         static Reflection()
         {
             var providerName = "Reflection";
-            var rps = Configuration("assembly");
+
+
+            var rps = ProviderConfiguration.GetProvider(Path("App_Data\\UMC\\assembly.xml"));
             if (rps != null)
             {
-
                 if (rps == null || rps.Providers.Contains(providerName) == false)
                 {
-                    reflection = new Reflection();
-                    reflection.Provider = Provider.Create(providerName, typeof(Reflection).FullName);
+                    instance = new Reflection();
+                    instance.Provider = Provider.Create(providerName, typeof(Reflection).FullName);
                 }
                 else
                 {
-                    reflection = CreateObject(rps, providerName) as Reflection;
-                    if (reflection == null)
+                    instance = CreateObject(rps, providerName) as Reflection;
+                    if (instance == null)
                     {
-                        reflection = new Reflection();
-                        reflection.Provider = rps[providerName];
+                        instance = new Reflection();
+                        instance.Provider = rps[providerName];
 
                     }
                 }
             }
             else
             {
-                reflection = new Reflection();
-                reflection.Provider = Provider.Create(providerName, typeof(Reflection).FullName);
+                instance = new Reflection();
+                instance.Provider = Provider.Create(providerName, typeof(Reflection).FullName);
             }
 
         }
         public static Reflection Instance()
         {
-            return reflection;
+            return instance;
+
+        }
+        readonly static string BaseDirectory = System.AppDomain.CurrentDomain.BaseDirectory;
+        /// <summary>
+        /// 转化路径
+        /// </summary>
+        /// <param name="path">路径</param>
+        /// <returns></returns>
+        internal protected virtual string AppPath(string path)
+        {
+            path = path.Trim('~');
+
+            if (String.IsNullOrEmpty(path))
+            {
+                return BaseDirectory;
+            }
+            else if (path.Length == 1 || (path.Length > 1 && path[1] != ':'))
+            {
+                path = BaseDirectory + path;
+            }
+            path = System.Text.RegularExpressions.Regex.Replace(path, @"/+", System.IO.Path.DirectorySeparatorChar.ToString());
+            return System.Text.RegularExpressions.Regex.Replace(path, @"\\+", System.IO.Path.DirectorySeparatorChar.ToString());
+            // return path;
+        }
+        internal protected virtual void ScanningClass()
+        {
+
+            var als = AppDomain.CurrentDomain.GetAssemblies();
+
+            WebRuntime.Register(typeof(Reflection).Assembly);
+            foreach (var a in als)
+            {
+                var mpps = a.GetCustomAttributes(typeof(MappingAttribute), false);
+                if (mpps.Length > 0)
+                {
+                    WebRuntime.Register(a);
+                }
+            }
+            var assemblies = new List<Assembly>();
+
+            foreach (string dll in Directory.GetFiles(AppDomain.CurrentDomain.BaseDirectory, "*.dll", SearchOption.TopDirectoryOnly))
+            {
+                try
+                {
+                    var assembly = Assembly.LoadFile(dll);
+                    var mpps = assembly.GetCustomAttributes(typeof(MappingAttribute), false);
+                    if (mpps.Length > 0)
+                    {
+                        WebRuntime.Register(assembly);
+                    }
+
+                }
+                catch { }
+            }
+        }
+        static string Path(string path)
+        {
+            path = path.Trim('~');
+
+            if (String.IsNullOrEmpty(path))
+            {
+                return BaseDirectory;
+            }
+            else if (path.Length == 1 || (path.Length > 1 && path[1] != ':'))
+            {
+                path = BaseDirectory + path;// String.Format("{0}{1}", BaseDirectory, path);
+            }
+            path = System.Text.RegularExpressions.Regex.Replace(path, @"/+", System.IO.Path.DirectorySeparatorChar.ToString());
+            return System.Text.RegularExpressions.Regex.Replace(path, @"\\+", System.IO.Path.DirectorySeparatorChar.ToString());
 
         }
 
+
+        internal protected virtual void WriteLog(String name, String type, params object[] logs)
+        {
+
+            var filename = AppPath(String.Format("App_Data\\{2}\\{1}\\{0:yy-MM-dd}.log", DateTime.Now, name, type));
+            if (!System.IO.Directory.Exists(System.IO.Path.GetDirectoryName(filename)))
+            {
+                System.IO.Directory.CreateDirectory(System.IO.Path.GetDirectoryName(filename));
+            }
+
+            using (System.IO.StreamWriter writer = new System.IO.StreamWriter(filename, true))
+            {
+                foreach (var b in logs)
+                {
+                    if (b is String)
+                    {
+                        writer.Write(b);
+                    }
+                    else
+                    {
+                        Data.JSON.Serialize(b, writer);
+                    }
+                    writer.WriteLine();
+                }
+                writer.WriteLine();
+                writer.WriteLine();
+                writer.Close();
+                writer.Dispose();
+            }
+        }
         /// <summary>
         /// 是否为数据库空值，如果是就返回defaultValue
         /// </summary>
@@ -65,20 +169,18 @@ namespace UMC.Data
                 return obj;
             }
         }
-
-
-        public static UMC.Security.RuntimeModel RuntimeModel
+        public static void Start(Action action)
         {
-            get
-            {
-                return reflection.GetRuntimeModel();
-            }
+            instance.StartNew(action);
+        }
+        protected virtual void StartNew(Action action)
+        {
+            System.Threading.Tasks.Task.Factory.StartNew(action);
+
         }
 
-        protected virtual UMC.Security.RuntimeModel GetRuntimeModel()
-        {
-            return Security.RuntimeModel.Single;
-        }
+
+
         internal protected virtual Data.Provider GetProviderNode(string configKey, String Key)
         {
             var t = Configuration(configKey);
@@ -90,8 +192,6 @@ namespace UMC.Data
             }
             else
             {
-
-                Data.Utility.Debug("Provider", configKey, Key);
                 return null;
             }
 
@@ -102,6 +202,17 @@ namespace UMC.Data
         {
             return GetProviderNode("database", providerKey);
         }
+        protected virtual string CFGPath(string configKey)
+        {
+            return AppDataPath(String.Format("UMC\\{0}", configKey));
+
+        }
+        public static string ConfigPath(string configKey)
+        {
+
+            return instance.CFGPath(configKey);
+        }
+
         /// <summary>
         /// 获取平台配置
         /// </summary>
@@ -120,7 +231,7 @@ namespace UMC.Data
 
         public static Provider GetDataProvider(string config, String key)
         {
-            return reflection.GetProviderNode(config, key);
+            return instance.GetProviderNode(config, key);
         }
 
 
@@ -131,7 +242,7 @@ namespace UMC.Data
         /// <returns></returns>
         public static string AppDataPath(string vPath)
         {
-            return Data.Utility.MapPath(String.Format("~App_Data\\{0}", vPath));
+            return instance.AppPath(String.Format("~App_Data\\{0}", vPath));
         }
         /// <summary>
         /// 创建实例

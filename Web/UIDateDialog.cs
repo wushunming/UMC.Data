@@ -8,7 +8,7 @@ using System.Collections.Specialized;
 namespace UMC.Web
 {
     /// <summary>
-    /// 数字对话框
+    /// 日期对话框
     /// </summary>
     public class UIDateDialog : UIDialog
     {

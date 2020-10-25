@@ -17,6 +17,24 @@ namespace UMC.Web
                 _data["cell"] = cell;
             }
         }
+        public UIDataSource(System.Data.DataTable data, UICell cell)
+        {
+            _data["data"] = data;
+
+            _data["cell"] = cell.Type;
+            _style.Copy(cell.Style);
+            this.Format(cell.Format);
+
+        }
+        public UIDataSource(ICollection data, UICell cell)
+        {
+            _data["data"] = data;
+
+            _data["cell"] = cell.Type;
+            _style.Copy(cell.Style);
+            this.Format(cell.Format);
+
+        }
         public UIDataSource(ICollection data, string cell)
         {
             _data["data"] = data;
@@ -40,6 +58,18 @@ namespace UMC.Web
             : this(model, cmd, "")
         {
         }
+        public UIDataSource(string model, string cmd, UICell cell)
+        {
+            if (String.IsNullOrEmpty(model) == false && String.IsNullOrEmpty(cmd) == false)
+            {
+                _data["model"] = model;
+                _data["cmd"] = cmd;
+            }
+            _data["cell"] = cell.Type;
+            _style.Copy(cell.Style);
+            this.Format(cell.Format);
+
+        }
         public UIDataSource(string model, string cmd, string cell)
         {
             if (String.IsNullOrEmpty(model) == false && String.IsNullOrEmpty(cmd) == false)
@@ -50,6 +80,21 @@ namespace UMC.Web
             if (String.IsNullOrEmpty(cell) == false)
             {
                 _data["cell"] = cell;
+            }
+        }
+        public UIDataSource(string model, string cmd, WebMeta search, UICell cell)
+        {
+            if (String.IsNullOrEmpty(model) == false && String.IsNullOrEmpty(cmd) == false)
+            {
+                _data["model"] = model;
+                _data["cmd"] = cmd;
+            }
+            _data["cell"] = cell.Type;
+            _style.Copy(cell.Style);
+            this.Format(cell.Format);
+            if (search != null && search.Count > 0)
+            {
+                _data["search"] = search;
             }
         }
         public UIDataSource(string model, string cmd, WebMeta search, String cell)
@@ -69,7 +114,7 @@ namespace UMC.Web
             }
         }
 
-        public void BuildStyle(WebMeta style)
+        public void StyleForMeta(WebMeta style)
         {
             if (style != null && style.Count > 0)
             {
@@ -83,22 +128,27 @@ namespace UMC.Web
             {
                 return _style;
             }
-        }
-        public void BuildStyle(UIStyle style)
-        {
-            if (style != null)
+            set
             {
-                _style.Copy(style);
+
+                _style.Copy(value);
+
             }
         }
-        public void BuildFormat(WebMeta format)
+        public void Format(WebMeta format)
         {
             if (format != null && format.Count > 0)
             {
                 _data["format"] = format;
             }
         }
-        public void BuildSubmit(string model, string cmd, string send)
+        /// <summary>
+        ///  提交事件，点击行提交数据并关闭当前页面
+        /// </summary>
+        /// <param name="model"></param>
+        /// <param name="cmd"></param>
+        /// <param name="send">如果数据源有此字段，则用此字段，则取此字段值。</param>
+        public void Submit(string model, string cmd, string send)
         {
             var click = new UMC.Web.WebMeta().Put("model", model).Put("cmd", cmd);
             if (String.IsNullOrEmpty(send) == false)
@@ -109,7 +159,13 @@ namespace UMC.Web
             _data["submit"] = click;
 
         }
-        public void BuildSubmit(string model, string cmd, WebMeta send)
+        /// <summary>
+        ///  提交事件，点击行提交数据并关闭当前页面
+        /// </summary>
+        /// <param name="model"></param>
+        /// <param name="cmd"></param>
+        /// <param name="send">如果数据源有此字段，则用此字段，则取此字段值。</param>
+        public void Submit(string model, string cmd, WebMeta send)
         {
             var click = new UMC.Web.WebMeta().Put("model", model).Put("cmd", cmd);
             if (send != null && send.Count > 0)
@@ -120,7 +176,13 @@ namespace UMC.Web
             _data["submit"] = click;
 
         }
-        public void BuildClick(string model, string cmd, string send)
+        /// <summary>
+        ///  点击事件
+        /// </summary>
+        /// <param name="model"></param>
+        /// <param name="cmd"></param>
+        /// <param name="send">如果数据源有此字段，则用此字段，则取此字段值。</param>
+        public void Click(string model, string cmd, string send)
         {
             var click = new UMC.Web.WebMeta().Put("model", model).Put("cmd", cmd);
             if (String.IsNullOrEmpty(send) == false)
@@ -131,7 +193,13 @@ namespace UMC.Web
             _data["click"] = click;
 
         }
-        public void BuildClick(string model, string cmd, WebMeta send)
+        /// <summary>
+        ///  点击事件
+        /// </summary>
+        /// <param name="model"></param>
+        /// <param name="cmd"></param>
+        /// <param name="send">如果send字典值在数据源有此字段，则取此字段值替换。</param>
+        public void Click(string model, string cmd, WebMeta send)
         {
             var click = new UMC.Web.WebMeta().Put("model", model).Put("cmd", cmd);
             if (send != null && send.Count > 0)
@@ -153,95 +221,6 @@ namespace UMC.Web
         void Data.IJSON.Read(string key, object value)
         {
 
-        }
-    }
-    public class UISectionBuilder
-    {
-        WebMeta _data = new UMC.Web.WebMeta();
-        public UISectionBuilder(String model, String cmd)
-        {
-            _data.Put("model", model, "cmd", cmd);//.Put("search", search);
-
-        }
-        public UISectionBuilder(String model, String cmd, WebMeta search)
-        {
-            _data.Put("model", model, "cmd", cmd).Put("search", search);
-        }
-        public UISectionBuilder RefreshEvent(params String[] eventName)
-        {
-
-            _data.Put("RefreshEvent", String.Join(",", eventName));
-            return this;
-        }
-        public UISectionBuilder DataEvent(params String[] eventName)
-        {
-
-            _data.Put("DataEvent", String.Join(",", eventName));
-            return this;
-        }
-        public UISectionBuilder Scanning(Web.UIClick click)
-        {
-
-            _data.Put("Scanning", click);
-            return this;
-        }
-        public UISectionBuilder CloseEvent(params String[] eventName)
-        {
-
-            _data.Put("CloseEvent", String.Join(",", eventName));
-            return this;
-        }
-        public WebMeta Builder()
-        {
-            return new UMC.Web.WebMeta(_data.GetDictionary()).Put("type", "Pager");//.Put("DataSource", dataSources).Put("title", this.Title);//.Put("model");
-        }
-    }
-
-    public class UIDataSourceBuilder
-    {
-
-        WebMeta _data = new UMC.Web.WebMeta();
-
-        public UIDataSourceBuilder Menu(params Web.UIClick[] clicks)
-        {
-            _data.Put("menu", clicks);
-            return this;
-        }
-        public string Title
-        {
-            get; set;
-        }
-        public UIDataSourceBuilder RefreshEvent(params String[] eventName)
-        {
-
-            _data.Put("RefreshEvent", String.Join(",", eventName));
-            return this;
-        }
-        public UIDataSourceBuilder CloseEvent(params String[] eventName)
-        {
-
-            _data.Put("CloseEvent", String.Join(",", eventName));
-            return this;
-        }
-        public UIDataSourceBuilder Header(UIHeader header)
-        {
-            _data.Put("Header", header);
-            return this;
-        }
-        public UIDataSourceBuilder Footer(UIHeader footer)
-        {
-            _data.Put("Footer", footer);
-            return this;
-        }
-
-        public WebMeta Builder(params UIDataSource[] dataSources)
-        {
-            return new UMC.Web.WebMeta(_data.GetDictionary()).Put("type", "DataSource").Put("DataSource", dataSources).Put("title", this.Title);//.Put("model");
-        }
-        public WebMeta BinderCells(params UIDataSource[] dataSources)
-        {
-
-            return new UMC.Web.WebMeta(_data.GetDictionary()).Put("type", "DataSource").Put("DataSource", dataSources).Put("model", "Cells").Put("title", this.Title);
         }
     }
 }

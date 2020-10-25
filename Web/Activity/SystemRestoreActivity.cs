@@ -38,14 +38,14 @@ namespace UMC.Web.Activity
             var Key = Utility.Guid(Guid.NewGuid());
             var log = new UMC.Data.CSV.Log(Utility.GetRoot(request.Url), Key, "开始备份");
             var appKey = Security.Principal.Current.AppKey ?? Guid.Empty;
-            new System.Threading.Tasks.Task(() =>
+            Data.Reflection.Start(() =>
             {
                 var Initializers = Data.Sql.Initializer.Initializers();
                 try
                 {
                     var now = DateTime.Now;
 
-                    var database = Reflection.Configuration("Database") ?? new UMC.Configuration.ProviderConfiguration();
+                    var database = Reflection.Configuration("database") ?? new UMC.Configuration.ProviderConfiguration();
                     //var count = false;
                     foreach (var initer in Initializers)
                     {
@@ -77,7 +77,7 @@ namespace UMC.Web.Activity
 
                 }
 
-            }).Start();
+            });
 
             this.Context.Send("Initializer", false);
 

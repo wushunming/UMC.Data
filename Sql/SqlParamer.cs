@@ -10,13 +10,13 @@ namespace UMC.Data.Sql
         static void AppendDictionary(System.Collections.IDictionary diction, string pfx)
         {
 
-            diction["WebADNuke.True"] = true;
-            diction["WebADNuke.False"] = false;
-            diction["WebADNuke.DateTime"] = DateTime.Now;
-            diction["WebADNuke.Id"] = System.Guid.NewGuid();
-            diction["WebADNuke.Prefix"] = pfx;
-            diction["WebADNuke.GuidEmpty"] = System.Guid.Empty;
-            diction["WebADNuke.GuidNull"] = System.Guid.Empty;
+            diction["UMC.True"] = true;
+            diction["UMC.False"] = false;
+            diction["UMC.DateTime"] = DateTime.Now;
+            diction["UMC.Id"] = System.Guid.NewGuid();
+            diction["UMC.Prefix"] = pfx;
+            diction["UMC.GuidEmpty"] = System.Guid.Empty;
+            diction["UMC.GuidNull"] = System.Guid.Empty;
             var user = UMC.Security.Identity.Current;
             if (user == null)
             {
@@ -25,8 +25,8 @@ namespace UMC.Data.Sql
             }
             else
             {
-                diction["WebADNuke.UserId"] = user.Id;
-                diction["WebADNuke.Username"] = user.Name;
+                diction["UMC.UserId"] = user.Id;
+                diction["UMC.Username"] = user.Name;
             }
 
         }

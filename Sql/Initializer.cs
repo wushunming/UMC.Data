@@ -48,8 +48,19 @@ namespace UMC.Data.Sql
         {
             get;
         }
+        public virtual bool Resource(UMC.Net.NetContext context, string targetKey)
+        {
+            return false;
+        }
+        public virtual int PageIndex
+        {
+            get
+            {
+                return -1;
+            }
+        }
+
         public abstract void Menu(IDictionary hash, DbFactory factory);
-        public abstract string ResourceKey { get; }
         public virtual string ResourceJS { get { return string.Empty; } }
         /// <summary>
         /// 安装后初始化
@@ -371,7 +382,7 @@ namespace UMC.Data.Sql
             }
             var factory = new DbFactory(provider);
             var sqler = factory.Sqler(1, false);
-            
+
             var em = dictionary.GetEnumerator();
 
             while (em.MoveNext())

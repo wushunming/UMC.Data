@@ -51,7 +51,7 @@ namespace UMC.Web.Activity
             var Key = this.AsyncDialog("Key", Utility.Guid(Guid.NewGuid()));
             var pathFile = this.AsyncDialog("File", g =>
             {
-                string path2 = UMC.Data.Utility.MapPath(String.Format("App_Data\\Temp\\{0}\\", Utility.GetRoot(request.Url)));
+                string path2 = UMC.Data.Utility.MapPath(String.Format("App_Data\\Static\\TEMP\\{0}\\", Utility.GetRoot(request.Url)));
 
                 var filename = String.Format("{0}{1}.tmp", path2, Key);
                 Utility.Copy(new UMC.Net.HttpClient().GetStreamAsync(media_id).Result, filename);
@@ -61,7 +61,7 @@ namespace UMC.Web.Activity
             });
             if (pathFile.EndsWith(".csv"))
             {
-                var pad = new Uri(request.Url, String.Format("/Download/{0}", pathFile));
+                var pad = new Uri(request.Url, String.Format("/TEMP/{0}", pathFile));
                 this.Context.Send(new Web.WebMeta().Put("type", "OpenUrl").Put("value", pad.AbsoluteUri), true);
             }
             var columnSettings = this.AsyncDialog("Columns", g =>
@@ -103,107 +103,108 @@ namespace UMC.Web.Activity
             var userName = Utility.GetUsername();
 
             var log = new CSV.Log(Utility.GetRoot(request.Url), Key, String.Format("开始{0}", this.Title ?? "文本数据导入"));
-            new System.Threading.Tasks.Task(() =>
-            {
-                int rowIndex = 1;
-                var reader = new System.IO.StreamReader(pathFile, Encoding.GetEncoding(Settings["Encoding"] ?? "utf-8"));
-                System.IO.FileStream file = System.IO.File.Open(String.Format("{0}.csv", pathFile), System.IO.FileMode.Create);
-
-
-                try
+            Data.Reflection.Start(() =>
                 {
-                    var writer = new System.IO.StreamWriter(file, Encoding.UTF8);
-                    var total = 0;
-                    var now = DateTime.Now;
+                    int rowIndex = 1;
+                    var reader = new System.IO.StreamReader(pathFile, Encoding.GetEncoding(Settings["Encoding"] ?? "utf-8"));
+                    System.IO.FileStream file = System.IO.File.Open(String.Format("{0}.csv", pathFile), System.IO.FileMode.Create);
 
 
-                    var header = CSV.ReadLine(reader);
-                    writer.WriteLine(header);
-
-                    int okindex = 0;
-
-                    CSV.EachRow(reader, data =>
+                    try
                     {
-                        rowIndex++;
-                        if (data.Length <= maxIndex)
-                        {
-                            log.Error(String.Format("第{0}行 数据无效", rowIndex));
-                            if (okindex + 10 < rowIndex)
-                            {
-                                throw new ArgumentException(String.Format("连续超过10条无效的数据"));
-                            }
-                            return;
-                        }
-                        var hash = new Hashtable();
-                        for (var i = 0; i < indexs.Count; i++)
-                        {
-                            int index = indexs[i];
-                            if (data.Length > index)
-                            {
-                                if (String.IsNullOrEmpty(data[index]))
-                                {
+                        var writer = new System.IO.StreamWriter(file, Encoding.UTF8);
+                        var total = 0;
+                        var now = DateTime.Now;
 
-                                    log.Error(String.Format("第{0}行 {1}列数据为空", rowIndex, this.Columns[i]));
-                                    if (okindex + 10 < rowIndex)
-                                    {
-                                        throw new ArgumentException(String.Format("连续超过10条无效的数据"));
-                                    }
-                                    return;
-                                }
 
-                            }
-                            else
+                        var header = CSV.ReadLine(reader);
+                        writer.WriteLine(header);
+
+                        int okindex = 0;
+
+                        CSV.EachRow(reader, data =>
+                        {
+                            rowIndex++;
+                            if (data.Length <= maxIndex)
                             {
-                                log.Error(String.Format("第{0}行 无{1}列数据", rowIndex, this.Columns[i]));
+                                log.Error(String.Format("第{0}行 数据无效", rowIndex));
                                 if (okindex + 10 < rowIndex)
                                 {
                                     throw new ArgumentException(String.Format("连续超过10条无效的数据"));
                                 }
                                 return;
-
                             }
-                            hash[this.Columns[i]] = data[index];
-                        }
-                        if (Do(log, rowIndex, hash))
-                        {
-                            total++;
-                            okindex = rowIndex;
-                        }
-                        else
-                        {
-                            foreach (var d in data)
+                            var hash = new Hashtable();
+                            for (var i = 0; i < indexs.Count; i++)
                             {
-                                UMC.Data.CSV.CSVFormat(writer, d);
-                                writer.Write(",");
+                                int index = indexs[i];
+                                if (data.Length > index)
+                                {
+                                    if (String.IsNullOrEmpty(data[index]))
+                                    {
+
+                                        log.Error(String.Format("第{0}行 {1}列数据为空", rowIndex, this.Columns[i]));
+                                        if (okindex + 10 < rowIndex)
+                                        {
+                                            throw new ArgumentException(String.Format("连续超过10条无效的数据"));
+                                        }
+                                        return;
+                                    }
+
+                                }
+                                else
+                                {
+                                    log.Error(String.Format("第{0}行 无{1}列数据", rowIndex, this.Columns[i]));
+                                    if (okindex + 10 < rowIndex)
+                                    {
+                                        throw new ArgumentException(String.Format("连续超过10条无效的数据"));
+                                    }
+                                    return;
+
+                                }
+                                hash[this.Columns[i]] = data[index];
                             }
-                            writer.WriteLine();
-                            writer.Flush();
-                        }
-                        if (okindex + 10 < rowIndex)
-                        {
-                            new ArgumentException(String.Format("连续超过10条无效的数据"));
-                        }
-                    });
-                    writer.Flush();
-                    writer.Close();
-                    log.End("导入数据完成");
-                    log.Info(String.Format("导入成功{0}条", total));
-                    log.Info(String.Format("用时{0}", DateTime.Now - now));
+                            if (Do(log, rowIndex, hash))
+                            {
+                                total++;
+                                okindex = rowIndex;
+                            }
+                            else
+                            {
+                                foreach (var d in data)
+                                {
+                                    UMC.Data.CSV.CSVFormat(writer, d);
+                                    writer.Write(",");
+                                }
+                                writer.WriteLine();
+                                writer.Flush();
+                            }
+                            if (okindex + 10 < rowIndex)
+                            {
+                                new ArgumentException(String.Format("连续超过10条无效的数据"));
+                            }
+                        });
+                        writer.Flush();
+                        writer.Close();
+                        log.End("导入数据完成");
+                        log.Info(String.Format("导入成功{0}条", total));
+                        log.Info(String.Format("用时{0}", DateTime.Now - now));
 
-                }
-                catch (Exception ex)
-                {
-                    log.End(String.Format("在{0}行导入失败", rowIndex));
-                    log.Info(ex.Message);
+                    }
+                    catch (Exception ex)
+                    {
+                        log.End(String.Format("在{0}行导入失败", rowIndex));
+                        log.Info(ex.Message);
 
-                }
-                finally
-                {
-                    file.Close();
-                    reader.Close();
-                }
+                    }
+                    finally
+                    {
+                        file.Close();
+                        reader.Close();
+                        log.Close();
+                    }
 
-            }).Start();
+                });//.Start();
 
             this.Context.Send(new UISectionBuilder("System", "Log", new WebMeta("Key", Key))
                     .Builder(), true);

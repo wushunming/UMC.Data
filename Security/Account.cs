@@ -25,9 +25,11 @@ namespace UMC.Security
         /// </summary>
         public const int MOBILE_ACCOUNT_KEY = 2;
         /// <summary>
-        /// 手机MAC地址
+        /// 个性签名Key
         /// </summary>
-        public const int MAC_ACCOUNT_KEY = 5;
+        public const int SIGNATURE_ACCOUNT_KEY = 5;
+
+
         /// <summary>
         /// 用户Id
         /// </summary>
@@ -77,8 +79,8 @@ namespace UMC.Security
         public void Commit()
         {
             var entity = UMC.Data.Database.Instance().ObjectEntity<UMC.Data.Entities.Account>();
-            entity.Where.And().Equal(new UMC.Data.Entities.Account { user_id = this.user_id, Name = this.Name });
-            var data = new UMC.Data.Entities.Account { ConfigData = Data.JSON.Serialize(this.Items), ForId = this.ForId };
+            entity.Where.And().Equal(new UMC.Data.Entities.Account { user_id = this.user_id, Type = this.Type });
+            var data = new UMC.Data.Entities.Account { ConfigData = Data.JSON.Serialize(this.Items), ForId = this.ForId, Name = this.Name };
             if (entity.Update(data) == 0)
             {
                 data.user_id = this.user_id;
@@ -295,41 +297,6 @@ namespace UMC.Security
                 return new Account(acc2);
             }
 
-        }
-        /// <summary>
-        /// 验证外围账户
-        /// </summary>
-        /// <param name="userid">外围帐户</param>
-        /// <param name="type">外围账户类型</param>
-        /// <param name="code">验证的值</param>
-        /// <param name="verifyField">值所在的字段</param>
-        /// <returns></returns>
-        public static bool Valid(Guid userid, int type, string code, string verifyField)
-        {
-            var entity = Data.Database.Instance().ObjectEntity<UMC.Data.Entities.Account>();
-            entity.Where.And().Equal(new UMC.Data.Entities.Account { Type = type, user_id = userid, });
-
-            var dic = entity.Single();
-            if (dic != null)
-            {
-                var config = UMC.Data.JSON.Deserialize<Hashtable>(dic.ConfigData) ?? new Hashtable();
-
-                var session = config[verifyField ?? KEY_VERIFY_FIELD] as string;
-                if (String.Equals(code, session))
-                {
-                    entity.Update(new UMC.Data.Entities.Account
-                    {
-                        Name = (config["Name"] as string) ?? dic.Name,
-                        Flags = UMC.Security.UserFlags.Normal,
-                        ConfigData = String.Empty
-                    });
-                    entity.Where.Reset().And().Equal(new Data.Entities.Account { Type = type, Name = (config["Name"] as string) ?? dic.Name })
-                        .And().Unequal(new Data.Entities.Account { user_id = userid })
-                        .Entities.Update(new UMC.Data.Entities.Account { Flags = UMC.Security.UserFlags.UnVerification });
-                    return true;
-                }
-            }
-            return false;
         }
         System.Collections.Generic.List<UMC.Data.Entities.Account> accounts;
 

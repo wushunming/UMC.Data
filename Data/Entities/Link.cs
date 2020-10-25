@@ -119,6 +119,33 @@ namespace UMC.Data.Entities
 
 
     }
+    public class ProjectAccess
+    {
+        public Guid? sub_id
+        {
+            get; set;
+        }
+        public Guid? user_id { get; set; }
+
+        /// <summary>
+        /// 
+        /// </summary>
+        public DateTime? LastAccessTime
+        {
+            get; set;
+        }
+        public int? Times
+        {
+            get; set;
+        }
+        public DateTime? CreationTime
+        {
+            get; set;
+        }
+
+    }
+
+
     /// <summary>
     /// 人员访问日志
     /// </summary>

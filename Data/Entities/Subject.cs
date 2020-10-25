@@ -40,14 +40,6 @@ namespace UMC.Data.Entities
             get;
             set;
         }
-        /// <summary>
-        /// 类别
-        /// </summary>
-        public Guid? category_id
-        {
-            get;
-            set;
-        }
         public int? Status
         {
             get;
@@ -75,9 +67,16 @@ namespace UMC.Data.Entities
             set;
         }
         /// <summary>
-        /// 主题项
+        /// 举报次数
         /// </summary>
-        public string Items
+        public int? TipOffs
+        {
+            get; set;
+        }
+        /// <summary>
+        /// 发布日期
+        /// </summary>
+        public int? PublishTime
         {
             get;
             set;
@@ -176,30 +175,12 @@ namespace UMC.Data.Entities
         /// 复制的源主题
         /// </summary>
         public Guid? soure_id { get; set; }
-        /// <summary>
-        /// 提交审核的时间
-        /// </summary>
-        public DateTime? SubmitTime { get; set; }
 
         public int? Score
         {
             get; set;
         }
-        /// <summary>
-        /// 审核人
-        /// </summary>
-        public Guid? AppId
-        {
-            get;
-            set;
-        }
-        /// <summary>
-        /// 审核意见
-        /// </summary>
-        public string AppDesc
-        {
-            get; set;
-        }
+        public DateTime? CreationTime { get; set; }
         /// <summary>
         /// 最后修改人ID
         /// </summary>
@@ -207,6 +188,58 @@ namespace UMC.Data.Entities
         {
             get; set;
         }
+        /// <summary>
+        /// 草稿
+        /// </summary>
+        public bool? IsDraught
+        {
+            get; set;
+        }
+
+    }
+    /// <summary>
+    /// 举报
+    /// </summary>
+    public class SubjectTipOff
+    {
+        public Guid? sub_id
+        {
+            get;
+            set;
+        }
+
+        public DateTime? CreationTime { get; set; }
+
+        public Guid? user_id { get; set; }
+        /// <summary>
+        /// 举报内容
+        /// </summary>
+        public string Description
+        {
+            get;
+            set;
+        }
+        /// <summary>
+        /// 举报类型
+        /// </summary>
+        public string Type
+        {
+            get;
+            set;
+        }
+        public string Url
+        {
+            get; set;
+        }
+    }
+    /// <summary>
+    /// 黑名单
+    /// </summary>
+    public class ProjectBlock
+    {
+        public Guid? ref_id { get; set; }
+        public int? Type { get; set; }
+        public Guid? user_id { get; set; }
     }
 
     public class ProjectItem
@@ -236,6 +269,15 @@ namespace UMC.Data.Entities
         public DateTime? CreationTime { get; set; }
         public Guid? project_id { get; set; }
         public string Code { get; set; }
+        /// <summary>
+        /// 
+        /// </summary>
+        public bool? Hide { get; set; }
+        public int? PublishTime
+        {
+            get;
+            set;
+        }
     }
     public class Project
     {
@@ -267,6 +309,18 @@ namespace UMC.Data.Entities
         }
         public int? Sequence { get; set; }
         public DateTime? CreationTime { get; set; }
+        public int? PublishTime
+        {
+            get;
+            set;
+        }
+        /// <summary>
+        /// 修改时间
+        /// </summary>
+        public DateTime? ModifiedTime
+        {
+            get; set;
+        }
     }
 
     public class ProjectMember
@@ -279,7 +333,39 @@ namespace UMC.Data.Entities
         public Guid? project_id { get; set; }
         public DateTime? CreationTime { get; set; }
         public Web.WebAuthType? AuthType { get; set; }
+        public string Alias { get; set; }
+        public int? AccountType { get; set; }
 
+
+    }
+    /// <summary>
+    /// 用户设置
+    /// </summary>
+    public class ProjectUserSetting
+    {
+        public Guid? Id { get; set; }
+        public int? Type { get; set; }
+        public Guid? user_id { get; set; }
+
+        public string CorpId { get; set; }
+        public string AppId { get; set; }
+        public string AgentId { get; set; }
+        public string AppSecret { get; set; }
+        public string AccessToken { get; set; }
+        public int? ExpiresTime { get; set; }
+
+        public string APITicket { get; set; }
+        public int? APIExpiresTime { get; set; }
+
+    }
+    /// <summary>
+    /// 项目设置
+    /// </summary>
+    public class ProjectSetting
+    {
+        public Guid? project_id { get; set; }
+        public Guid? user_setting_id { get; set; }
+        public int? Type { get; set; }
     }
     public enum DynamicType
     {
@@ -297,11 +383,29 @@ namespace UMC.Data.Entities
             set;
         }
         public Guid? project_id { get; set; }
-        public DateTime? Time { get; set; }
+        public int? Time { get; set; }
         public DynamicType? Type { get; set; }
         public Guid? refer_id { get; set; }
         public string Title { get; set; }
         public string Explain { get; set; }
 
+    }
+    /// <summary>
+    /// 搜索关键字
+    /// </summary>
+    public class SearchKeyword
+    {
+        public string Keyword
+        {
+            get; set;
+        }
+        public Guid? user_id
+        {
+            get; set;
+        }
+        public int? Time
+        {
+            get; set;
+        }
     }
 }

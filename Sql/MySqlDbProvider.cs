@@ -20,7 +20,7 @@ namespace UMC.Data.Sql
 
         public override string Date()
         {
-            return "DateTime";
+            return "DATETIME";
         }
 
         public override string DropColumn(string name, string field)
@@ -45,7 +45,7 @@ namespace UMC.Data.Sql
 
         public override string Number()
         {
-            return "decimal(16,2)";
+            return "DECIMAL(16,2)";
         }
 
         public override string PrimaryKey(string name, params string[] fields)
@@ -65,7 +65,7 @@ namespace UMC.Data.Sql
 
         public override string String()
         {
-            return "VARCHAR(255)";
+            return "NVARCHAR(255)";
         }
 
         public override string Text()
@@ -88,7 +88,7 @@ namespace UMC.Data.Sql
 
     public class MySqlDbProvider : UMC.Data.Sql.DbProvider
     {
-        private static System.Data.Common.DbProviderFactory Instance;
+        public static System.Data.Common.DbProviderFactory Instance;
         public override string AppendDbParameter(string key, object obj, DbCommand cmd)
         {
             if (obj is Guid)

@@ -93,32 +93,8 @@ namespace UMC.Data.Sql
 
     public class SqlDbProvider : UMC.Data.Sql.DbProvider
     {
-        private static System.Data.Common.DbProviderFactory Instance;
+        public static System.Data.Common.DbProviderFactory Instance;
 
-        //public override string Year(string feild)
-        //{
-        //    return String.Format("DATEPART(yy,{0})", feild);
-        //}
-        //public override string Month(string feild)
-        //{
-        //    return String.Format("DATEPART(mm,{0})", feild);
-        //}
-        //public override string Day(string feild)
-        //{
-        //    return String.Format("DATEPART(dd,{0})", feild);
-        //}
-        //public override string Hour(string feild)
-        //{
-        //    return String.Format("DATEPART(hh,{0})", feild);
-        //}
-        //public override string Week(string feild)
-        //{
-        //    return String.Format("DATEPART(dw,{0})", feild);
-        //}
-        //public override string Minute(string feild)
-        //{
-        //    return String.Format("DATEPART(mi,{0})", feild);
-        //}
 
         protected override string ParamsPrefix
         {

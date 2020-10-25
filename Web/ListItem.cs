@@ -135,6 +135,11 @@ namespace UMC.Web
             this.Add(text, value);
             return this;
         }
+        public ListItemCollection Put(string text)
+        {
+            this.Add(text);
+            return this;
+        }
         public ListItemCollection Put(string text, string value, bool selected)
         {
             this.Add(text, value, selected);

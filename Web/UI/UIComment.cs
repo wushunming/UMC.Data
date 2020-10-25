@@ -8,7 +8,7 @@ using UMC.Data;
 
 namespace UMC.Web.UI
 {
-    public class UICommentCell : UICell
+    public class UIComment : UICell
     {
         public class Image
         {
@@ -53,33 +53,44 @@ namespace UMC.Web.UI
         }
         WebMeta data;
         public override object Data => data;
-        public UICommentCell(string src)
+        public UIComment(string src)
         {
             this.data = new WebMeta().Put("src", src);
             this.Type = "Comment";
         }
-        public UICommentCell Meta(string name, string value)
+        public UIComment Name(string name, string value)
         {
 
             this.data.Put(name, value);
             return this;
         }
-        public UICommentCell Name(string name)
+        public UIComment ImageClick(UIClick click)
+        {
+            this.data.Put("image-click", click);
+            return this;
+        }
+        public UIComment Desc(string desc)
+        {
+
+            this.data.Put("desc", desc);
+            return this;
+        }
+        public UIComment Name(string name)
         {
             this.Format.Put("name", name);
             return this;
         }
-        public UICommentCell Time(string title)
+        public UIComment Time(string title)
         {
             this.Format.Put("time", title);
             return this;
         }
-        public UICommentCell Content(string content)
+        public UIComment Content(string content)
         {
             this.Format.Put("content", content);
             return this;
         }
-        public UICommentCell Images(params Image[] images)
+        public UIComment Images(params Image[] images)
         {
             this.data.Put("image", images);
             return this;
@@ -89,14 +100,18 @@ namespace UMC.Web.UI
         {
             get; set;
         }
-        public UICommentCell Replys(params Reply[] replys)
+        public UIComment Replys(params Reply[] replys)
         {
-            //foreach(var re in replys)
             this.data.Put("replys", replys);
             return this;
 
         }
-        public UICommentCell Button(params UIEventText[] btns)
+        public UIComment Tag(UIEventText tag)
+        {
+            this.data.Put("tag", tag);
+            return this;
+        }
+        public UIComment Button(params UIEventText[] btns)
         {
             this.data.Put("buttons", btns);
             return this;

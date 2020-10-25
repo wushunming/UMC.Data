@@ -32,6 +32,7 @@ namespace UMC.Web
             }
 
         }
+
         internal const int OuterDataEvent = 131072;
 
         /// <summary>
@@ -114,12 +115,22 @@ namespace UMC.Web
         {
 
         }
-        static bool CheckApp(String UserAgent)
+        static bool CheckApp(String UserAgent, String query)
         {
 
             if (String.IsNullOrEmpty(UserAgent) == false)
             {
-                return UserAgent.IndexOf("UMC Client") > -1;
+                if (UserAgent.IndexOf("UMC Client") == -1)
+                {
+                    if (String.IsNullOrEmpty(query) == false)
+                    {
+                        return query.Contains("&_v=Debug");
+                    }
+                }
+                else
+                {
+                    return true;
+                }
             }
             return false;
         }
@@ -137,11 +148,11 @@ namespace UMC.Web
 
             }
             this.IsCashier = UMC.Security.Principal.Current.IsInRole(UMC.Security.Membership.UserRole);
-            this.IsApp = CheckApp(userAgent);
+            this.IsApp = CheckApp(userAgent, uri.Query);//.Contains("&_v=Debug");
 
         }
 
-
+        internal int XHRTime = 0;
         public void JSONP(string json, string p, System.IO.TextWriter writer)
         {
             var cmds = UMC.Data.JSON.Deserialize<CommandKey[]>(json);
@@ -197,6 +208,12 @@ namespace UMC.Web
                     this.WriteTo(writer, ur => { });
 
                 }
+                if (h == false)
+                {
+                    writer.Write(",");
+                }
+                writer.Write("\"TimeSpan\":");
+                writer.Write(Data.Utility.TimeSpan());
                 writer.Write("}");
             }
             if (String.IsNullOrEmpty(p) == false)
@@ -254,13 +271,6 @@ namespace UMC.Web
             {
                 return;
             }
-            //var key = String.Format("{0}.{1}", model, cmd);
-            //if (WebRuntime.IsLog.ContainsKey(key))
-            //{
-            //    var msg = WebRuntime.IsLog[key];
-            //    Log(key, msg, this.UserHostAddress, this.UserAgent, value);
-
-            //}
 
             ClearUIEvent(model, cmd);
             Redirect(model, cmd, value);
@@ -408,7 +418,7 @@ namespace UMC.Web
         internal UIClick UIEvent
         {
             get; set;
-        }// = new System.Collections.Hashtable();
+        }
 
         /// <summary>
         /// 当前处理共享健值
@@ -445,7 +455,6 @@ namespace UMC.Web
             if (WebRuntime.IsLog.ContainsKey(key))
             {
                 var msg = WebRuntime.IsLog[key];
-                Log(key, msg, this.UserHostAddress, this.UserAgent);
 
             }
 
@@ -465,37 +474,42 @@ namespace UMC.Web
                     this.Redirect(model, cmd, String.Empty);
                     break;
                 case 1:
-                    if (String.IsNullOrEmpty(QueryString.GetKey(0)))
+                    var skey = QueryString.GetKey(0);
+                    var svalue = QueryString.Get(0);
+                    if (String.IsNullOrEmpty(skey))
                     {
-                        this.Redirect(model, cmd, QueryString[0]);
+                        this.Redirect(model, cmd, svalue);
+
+                    }
+                    else if (String.IsNullOrEmpty(svalue))
+                    {
+
+                        this.Redirect(model, cmd, skey);
                     }
                     else
                     {
+
                         goto default;
                     }
                     break;
                 default:
-                    var sinleValue = String.Empty;
                     var hash = new System.Collections.Hashtable();
                     for (var i = 0; i < QueryString.Count; i++)
                     {
-                        if (String.IsNullOrEmpty(QueryString.GetKey(i)))
+                        var key = QueryString.GetKey(i);
+                        var value = QueryString.Get(i);
+                        if (String.IsNullOrEmpty(key) == false)
                         {
-                            sinleValue = QueryString[i];
-
+                            hash[key] = value;
                         }
                         else
                         {
-                            hash[QueryString.GetKey(i)] = QueryString[i];
+                            hash["Id"] = value;
                         }
                     }
                     this.InnerHeaders.Clear();
                     var header = this.InnerHeaders;
                     header[model] = hash;
-                    if (String.IsNullOrEmpty(sinleValue) == false)
-                    {
-                        header[cmd] = sinleValue;
-                    }
 
                     this.ModelCommand(model, cmd, header);
                     this.Send();
@@ -547,7 +561,7 @@ namespace UMC.Web
                     if (this.OuterHeaders.ContainsKey(key))
                     {
                         var ats = new System.Collections.ArrayList();
-                        var ts = this.OuterHeaders[key];//.GetDictionary()["DataEvent"];
+                        var ts = this.OuterHeaders[key];
 
                         if (ts is Array)
                         {
@@ -625,9 +639,20 @@ namespace UMC.Web
                     this.Start("true");
                     break;
                 case 1:
-                    if (String.IsNullOrEmpty(QueryString.GetKey(0)))
+                    var sKey = QueryString.GetKey(0);
+                    var sValue = QueryString.Get(0);
+                    if (String.IsNullOrEmpty(sKey) == false && String.IsNullOrEmpty(sValue) == false)
                     {
-                        this.SendDialog(QueryString[0]);
+                        goto default;
+                    }
+                    else if (String.IsNullOrEmpty(sValue) == false)
+                    {
+                        this.SendDialog(sValue);
+                    }
+                    else if (String.IsNullOrEmpty(sKey) == false)
+                    {
+
+                        this.SendDialog(sKey);
                     }
                     else
                     {
@@ -654,11 +679,18 @@ namespace UMC.Web
 
 
         }
+        internal bool IsEmptyReq = false;
 
+        ClientRedirect _lastRedirect;
         void Send(System.Collections.IDictionary doc2)
         {
+            this.IsEmptyReq = false;
             var context = this.Context = doc2 == null ? WebRuntime.Start(this) : WebRuntime.ProcessRequest(doc2, this);
             var response = context.Response;
+            if (IsEmptyReq)
+            {
+                _lastRedirect = null;
+            }
 
             this.Session.Check(context);
             this.RedirectTimes++;
@@ -701,6 +733,7 @@ namespace UMC.Web
                     throw new Exception(String.Format("{0}.{1},请求重定向超过最大次数", clientRedirect.Model, clientRedirect.Command));
                 }
                 var args = response.Headers.GetMeta(WebRequest.KEY_HEADER_ARGUMENTS);
+                _lastRedirect = clientRedirect;
 
                 if (clientEvent != WebEvent.None)
                 {
@@ -742,6 +775,14 @@ namespace UMC.Web
             response.Headers.Remove(WebRequest.KEY_HEADER_ARGUMENTS);
             OutputHeader(response.Headers);
             this.ClientEvent = this.ClientEvent | clientEvent;
+            if (IsEmptyReq == false)
+            {
+                if (_lastRedirect != null && XHRTime > 1)
+                {
+                    this.ClientEvent = this.ClientEvent | WebEvent.Reset;
+                    response.Headers.Put("Reset", _lastRedirect);
+                }
+            }
         }
         //
 

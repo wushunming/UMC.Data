@@ -3,6 +3,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Text;
 using UMC.Data.Sql;
+using UMC.Net;
 
 namespace UMC.Data.Entities
 {
@@ -14,8 +15,17 @@ namespace UMC.Data.Entities
 
         public override string Name => "UMC";
 
-        public override string ResourceKey => "";
-        public override string ResourceJS => "index.js";
+        public override bool Resource(NetContext context, string targetKey)
+        {
+            if (targetKey.EndsWith("UMC.js") || targetKey.EndsWith("Page.js"))
+            {
+                context.Output.WriteLine("UMC.UI.Config({'posurl': '/UMC/' + (UMC.cookie('device') || UMC.cookie('device', UMC.uuid()))}); ");
+
+
+                return true;
+            }
+            return base.Resource(context, targetKey);
+        }
 
         public Initializer()
         {
@@ -34,18 +44,24 @@ namespace UMC.Data.Entities
             this.Setup(new Menu() { Id = Guid.Empty });
             this.Setup(new LinkAccess() { link_id = Guid.Empty, Username = String.Empty });
 
-            this.Setup(new Location() { Id = 0 });
+            this.Setup(new Location() { Id = 0 });//
 
             this.Setup(new Project() { Id = Guid.Empty });
             this.Setup(new ProjectItem() { Id = Guid.Empty });
-            this.Setup(new ProjectDynamic() { Time = DateTime.MinValue, user_id = Guid.Empty });
+            this.Setup(new ProjectDynamic() { Time = 0, user_id = Guid.Empty });
+            this.Setup(new ProjectAccess() { sub_id = Guid.Empty, user_id = Guid.Empty });
             this.Setup(new ProjectMember() { project_id = Guid.Empty, user_id = Guid.Empty });
             this.Setup(new Portfolio() { Id = Guid.Empty });
 
-            this.Setup(new Attention { Id = Guid.Empty, user_id = Guid.Empty });
-            this.Setup(new Proposal { ref_id = Guid.Empty, user_id = Guid.Empty }, new Proposal { Content = String.Empty });
+            this.Setup(new ProjectSetting() { Type = 0, project_id = Guid.Empty });
+            this.Setup(new ProjectUserSetting() { Id = Guid.Empty });
+
+            this.Setup(new Proposal { ref_id = Guid.Empty, user_id = Guid.Empty });
             this.Setup(new Subject { Id = Guid.Empty }, new Subject { ConfigXml = String.Empty, DataJSON = String.Empty, Content = String.Empty });
             this.Setup(new Comment { Id = Guid.Empty }, new Comment { Content = String.Empty });
+            this.Setup(new ProjectBlock { user_id = Guid.Empty, ref_id = Guid.Empty, Type = 0 });
+            this.Setup(new SubjectTipOff { user_id = Guid.Empty, sub_id = Guid.Empty });
+            this.Setup(new SearchKeyword { user_id = Guid.Empty, Keyword = String.Empty });
 
 
         }
@@ -97,33 +113,6 @@ namespace UMC.Data.Entities
         {
             factory.ObjectEntity<Data.Entities.Menu>()
                    .Insert(new Data.Entities.Menu()
-                   {
-                       Icon = "\uf188",
-                       Caption = "开发调试",
-                       IsDisable = false,
-                       ParentId = Guid.Empty,
-                       Seq = 90,
-                       Id = Guid.NewGuid(),
-                       Url = "#debug"
-                       //}, new Data.Entities.Menu()
-                       //{
-                       //    Icon = "\uf0c1",
-                       //    Caption = "连接管理",
-                       //    IsDisable = false,
-                       //    ParentId = Guid.Empty,
-                       //    Seq = 91,
-                       //    Id = Guid.NewGuid(),
-                       //    Url = "#link/setting"
-                       //}, new Data.Entities.Menu()
-                       //{
-                       //    Icon = "\uf02d",
-                       //    Caption = "内容管理",
-                       //    IsDisable = false,
-                       //    ParentId = Guid.Empty,
-                       //    Seq = 92,
-                       //    Id = Guid.NewGuid(),
-                       //    Url = "#subject/items"
-                   }, new Data.Entities.Menu()
                    {
                        Icon = "\uf0ae",
                        Caption = "菜单管理",

@@ -7,7 +7,7 @@ namespace UMC.Net
 {
     public abstract class Message : UMC.Configuration.DataProvider
     {
-        static Message _Instance;
+        protected static Message instance;
         private class Messager : Message
         {
             public override void Send(String type, Hashtable content, string number)
@@ -23,21 +23,32 @@ namespace UMC.Net
 
         public static Message Instance()
         {
-            if (_Instance == null)
+            if (instance == null)
             {
-                _Instance = UMC.Data.Reflection.CreateObject("Msg") as Message;
-                if (_Instance == null)
+                instance = UMC.Data.Reflection.CreateObject("Message") as Message;
+                if (instance == null)
                 {
-                    _Instance = new Messager();
-                    UMC.Data.Reflection.SetProperty(_Instance, "Provider", Data.Provider.Create("WebResource", "UMC.Data.WebResource"));
+                    instance = new Messager();
+                    UMC.Data.Reflection.SetProperty(instance, "Provider", Data.Provider.Create("Message", "UMC.Data.Message"));
                 }
             }
-            return _Instance;
+            return instance;
         }
 
         #region IMessage Members
 
-        public abstract void Send(String type, System.Collections.Hashtable content, string number);
+        /// <summary>
+        /// 短信模板发送
+        /// </summary>
+        /// <param name="type">对应模板</param>
+        /// <param name="data">替换的字典</param>
+        /// <param name="mobile">手机号码</param>
+        public abstract void Send(String type, System.Collections.Hashtable data, string mobile);
+        /// <summary>
+        /// 发送短信
+        /// </summary>
+        /// <param name="content">短信内容</param>
+        /// <param name="to">手机号码</param>
         public abstract void Send(string content, params string[] to);
         public virtual void Send(System.Net.Mail.MailMessage message)
         {

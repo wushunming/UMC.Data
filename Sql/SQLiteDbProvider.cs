@@ -91,7 +91,7 @@ namespace UMC.Data.Sql
 
     public class SQLiteDbProvider : UMC.Data.Sql.DbProvider
     {
-        private static System.Data.Common.DbProviderFactory Instance;
+        public static System.Data.Common.DbProviderFactory Instance;
         public override string AppendDbParameter(string key, object obj, DbCommand cmd)
         {
             if (obj is Guid)
@@ -105,7 +105,7 @@ namespace UMC.Data.Sql
             get
             {
                 var path = UMC.Data.Utility.MapPath(String.Format("~App_Data/{0}", this.Provider["db"] ?? "umc.db"));
-                return String.Format("data source={0}", path);
+                return String.Format("Data Source={0};Cache=Shared", path);
             }
         }
         public override DbBuilder Builder => new SQLiteBuilder();

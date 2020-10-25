@@ -328,36 +328,7 @@ namespace UMC.Configuration
                    .Where.And(new User { Username = username })
               .Entities.Update(new User { Alias = alias }) > 0;
         }
-        public override void Activation(Security.AccessToken token)
-        {
-            var sesion = new Configuration.Session<UMC.Security.AccessToken>(token, token.Id.ToString());
-            sesion.ContentType = token.ContentType;
-
-            switch (token.Username ?? "?")
-            {
-                case "?":
-                    if (token.SId.HasValue)
-                    {
-                        sesion.Commit(Guid.Empty, token.SId ?? Guid.Empty);
-                    }
-                    else
-                    {
-                        sesion.Commit(Guid.Empty, token.Id ?? Guid.Empty);
-                    }
-                    break;
-                case "#":
-                    sesion.Commit(Guid.Empty, token.Identity().Id ?? Guid.Empty);
-                    break;
-                default:
-                    sesion.Commit(Guid.Empty, token.Identity().Id ?? Guid.Empty);
-
-                    UMC.Data.Database.Instance().ObjectEntity<UMC.Data.Entities.User>()
-                        .Where.And(new UMC.Data.Entities.User { Username = token.Username }).Entities
-                        .Update(new User { ActiveTime = DateTime.Now, SessionKey = token.Id.Value });
-                    break;
-            }
-
-        }
+      
 
         public override string Password(string username)
         {

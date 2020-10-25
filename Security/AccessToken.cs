@@ -10,7 +10,7 @@ namespace UMC.Security
     /// </summary>
     public class AccessToken
     {
-        //public const String CONTENT_TYPE = "LOGIN/AUTH";
+
         public String ContentType
         {
             get;
@@ -21,17 +21,12 @@ namespace UMC.Security
             this.Data = new Hashtable();
         }
         /// <summary>
-        /// 过期时间，单位分钟，0为不过期
+        /// 过期时间，单位为秒，0为不过期
         /// </summary>
         public int Timeout
         {
             get;
             private set;
-        }
-        public AccessToken(Guid tmpId)
-            : this()
-        {
-            this.Id = tmpId;
         }
         public string Username
         {
@@ -41,7 +36,7 @@ namespace UMC.Security
         /// <summary>
         /// 用户Id
         /// </summary>
-        public Guid? SId
+        public Guid? UId
         {
             get;
             private set;
@@ -107,24 +102,6 @@ namespace UMC.Security
                 Login(UMC.Security.Identity.Create(ticket.Id.Value, "?", String.Empty), ticket.Id.Value, ticket.ContentType);
             }
         }
-        public static AccessToken Activation(string Username, AccessToken auth, string client)
-        {
-            switch (Username)
-            {
-                case "#":
-                case "?":
-                    var Token = Create(auth.Identity(), auth.Id.Value, client, auth.Timeout);
-                    UMC.Security.Membership.Instance().Activation(Token);
-                    return Token;
-                default:
-                    Identity Id = UMC.Security.Membership.Instance().Identity(Username);
-                    var Token2 = Create(Id, auth.Id.Value, client, auth.Timeout);
-                    UMC.Security.Membership.Instance().Activation(Token2);
-                    return Token2;
-
-            }
-
-        }
         public AccessToken Put(string key, string value)
         {
             if (String.IsNullOrEmpty(key) == false)
@@ -143,37 +120,37 @@ namespace UMC.Security
         /// <summary>
         /// 创建登录令牌
         /// </summary>
-        /// <param name="Id">身份</param>
+        /// <param name="user">身份</param>
         /// <param name="deviceId">令牌ID</param>
         /// <param name="deviceType">设备类型</param>
         /// <param name="timeout"></param>
         /// <returns></returns>
-        public static AccessToken Create(Identity Id, Guid deviceId, String deviceType, int timeout)
+        public static AccessToken Create(Identity user, Guid deviceId, String deviceType, int timeout)
         {
             var auth = new AccessToken();
             auth.ContentType = deviceType;
             auth.Timeout = timeout;
             auth.Id = deviceId;
-            auth.Username = Id.Name;
-            auth.SId = Id.Id;
+            auth.Username = user.Name;
+            auth.UId = user.Id;
             auth.ActiveTime = UMC.Data.Utility.TimeSpan();
             auth.Roles = null;
 
-            switch (Id.Name)
+            switch (user.Name)
             {
                 case "#":
                 case "?":
-                    if (String.IsNullOrEmpty(Id.Alias) == false)
+                    if (String.IsNullOrEmpty(user.Alias) == false)
                     {
-                        auth.Data["#"] = Id.Alias;
+                        auth.Data["#"] = user.Alias;
                     }
                     break;
                 default:
                     ;
-                    auth.Data["#"] = Id.Alias;
-                    if (Id.Roles != null)
+                    auth.Data["#"] = user.Alias;
+                    if (user.Roles != null)
                     {
-                        auth.Roles = String.Join(",", Id.Roles);
+                        auth.Roles = String.Join(",", user.Roles);
                     }
                     break;
             }
@@ -214,36 +191,39 @@ namespace UMC.Security
             int cuttime = UMC.Data.Utility.TimeSpan();
             if (this.Timeout > 0 && ((this.ActiveTime ?? 0) + this.Timeout) <= cuttime)
             {
+                this.UId = this.Id;
                 return UMC.Security.Identity.Create(this.Id.Value, "?", Alias);
             }
             if (String.IsNullOrEmpty(this.Username))
             {
+                this.UId = this.Id;
+
                 return UMC.Security.Identity.Create(this.Id.Value, "?", Alias);
             }
             switch (this.Username)
             {
                 case "?":
-                    return UMC.Security.Identity.Create(this.SId ?? this.Id.Value, "?", Alias);
+                    return UMC.Security.Identity.Create(this.UId ?? this.Id.Value, "?", Alias);
                 case "#":
-                    if (this.SId.HasValue)
+                    if (this.UId.HasValue)
                     {
-                        return UMC.Security.Identity.Create(this.SId.Value, "#", Alias);
+                        return UMC.Security.Identity.Create(this.UId.Value, "#", Alias);
                     }
                     else
                     {
                         return UMC.Security.Identity.Create(this.Id.Value, "?", Alias);
                     }
                 default:
-                    if (this.SId.HasValue)
+                    if (this.UId.HasValue)
                     {
                         if (String.IsNullOrEmpty(this.Roles))
                         {
-                            return UMC.Security.Identity.Create(this.SId.Value, this.Username, Alias);
+                            return UMC.Security.Identity.Create(this.UId.Value, this.Username, Alias);
 
                         }
                         else
                         {
-                            return UMC.Security.Identity.Create(this.SId.Value, this.Username
+                            return UMC.Security.Identity.Create(this.UId.Value, this.Username
                                 , Alias, this.Roles.Split(new String[] { "," }, StringSplitOptions.None));
                         }
                     }
@@ -251,54 +231,66 @@ namespace UMC.Security
                     {
                         return UMC.Security.Identity.Create(this.Id.Value, "?", Alias);
                     }
-                    break;
             }
         }
         /// <summary>
         /// 登录，默认30分钟过期
         /// </summary>
-        /// <param name="Id"></param>
+        /// <param name="user"></param>
         /// <param name="deviceId">设备令牌ID</param>
         /// <returns></returns>
-        public static AccessToken Login(Identity Id, Guid deviceId, string client)
+        public static AccessToken Login(Identity user, Guid deviceId, string client)
         {
-            return Login(Id, deviceId, 30, client);
+            return Login(user, deviceId, 30 * 60, client);
 
+        }
+        /// <summary>
+        /// 登录如果unqiue为false，则timeout为30分钟
+        /// </summary>
+        /// <param name="Id">身份</param>
+        /// <param name="deviceId">设备Id</param>
+        /// <param name="deviceType">设备类型</param>
+        /// <param name="unqiue">记录登录</param>
+        /// <returns></returns>
+        public static AccessToken Login(Identity user, Guid deviceId, string deviceType, bool unqiue)
+        {
+            return Login(user, deviceId, unqiue ? 0 : 30 * 60, deviceType, unqiue);
         }
         /// <summary>
         /// 登录
         /// </summary>
-        /// <param name="Id"></param>
-        /// <param name="deviceId"></param>
-        /// <param name="deviceType">设备类型</param>
-        /// <param name="unqiue"></param>
+        /// <param name="user">身份</param>
+        /// <param name="deviceId">设备Id</param>
+        /// <param name="timeout">过期时间</param>
+        /// <param name="deviceType">设置类型</param>
+        /// <param name="unqiue">记录登录</param>
         /// <returns></returns>
-        public static AccessToken Login(Identity Id, Guid deviceId, string deviceType, bool unqiue)
+        public static AccessToken Login(Identity user, Guid deviceId, int timeout, string deviceType, bool unqiue)
         {
             if (unqiue)
             {
-                var token = Create(Id, deviceId, deviceType, 0);
+                var token = Create(user, deviceId, deviceType, timeout);
 
                 var sesion = new Configuration.Session<UMC.Security.AccessToken>(token, token.Id.ToString());
 
                 sesion.ContentType = deviceType;
 
-                sesion.Commit(Id, deviceType);
+                sesion.Commit(user, deviceType);
 
-                UMC.Security.Principal.Create(Id, token);
+                UMC.Security.Principal.Create(user, token);
                 return token;
             }
             else
             {
-                return Login(Id, deviceId, 30, deviceType);
+                return Login(user, deviceId, timeout, deviceType);
             }
 
         }
-        public static AccessToken Login(Identity Id, Guid deviceId, int timeout, string contentType)
+        public static AccessToken Login(Identity user, Guid deviceId, int timeout, string contentType)
         {
-            UMC.Security.Principal.Create(Id);
+            UMC.Security.Principal.Create(user);
 
-            var auth = Create(Id, deviceId, contentType, timeout);// new AccessToken();
+            var auth = Create(user, deviceId, contentType, timeout);
 
             UMC.Security.Membership.Instance().Activation(auth);
             return auth;
@@ -332,37 +324,6 @@ namespace UMC.Security
                     return null;
                 }
                 return data.SpecificData as AccessToken;
-            }
-        }
-        public static void Set(System.Collections.Specialized.NameValueCollection NameValue)
-        {
-            var data = System.Threading.Thread.CurrentPrincipal as UMC.Security.Principal;
-            if (data == null)
-            {
-                return;
-            }
-            var ticket = data.SpecificData as AccessToken;
-            if (ticket == null) { return; }
-            for (var i = 0; i < NameValue.Count; i++)
-            {
-                var key = NameValue.GetKey(i);
-                if (String.IsNullOrEmpty(key) == false)
-                {
-                    var value = NameValue.Get(i);
-                    if (String.IsNullOrEmpty(value))
-                    {
-                        ticket.Data.Remove(key);
-                    }
-                    else
-                    {
-                        ticket.Data[key] = value;
-                    }
-                }
-            }
-            var iden = data.Identity as UMC.Security.Identity;
-            if (iden.Id.HasValue)
-            {
-                UMC.Security.Membership.Instance().Activation(ticket);
             }
         }
 

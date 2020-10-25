@@ -2,54 +2,6 @@ using System;
 
 namespace UMC.Data.Entities
 {
-    /// <summary>
-    /// 关注类型
-    /// </summary>
-    public enum AttentionType
-    {
-        /// <summary>
-        /// 收听的
-        /// </summary>
-        Follow = 2,
-        /// <summary>
-        /// 好友
-        /// </summary>
-        Friend = 1,
-        /// <summary>
-        /// 黑名单
-        /// </summary>
-        Black = -1,
-        /// <summary>
-        /// 听众
-        /// </summary>
-        Atten = 0,
-    }
-    /// <summary>
-    /// 回复类型
-    /// </summary>
-    public enum ReplyType
-    {
-        /// <summary>
-        /// 回复
-        /// </summary>
-        Reply = 0,
-        /// <summary>
-        ///请求
-        /// </summary>
-        Request = 2,
-        /// <summary>
-        /// 私信
-        /// </summary>
-        Mail = 1,
-        /// <summary>
-        /// 转发
-        /// </summary>
-        Farwork = 3,
-        /// <summary>
-        /// 博客
-        /// </summary>
-        Blog = 4
-    }
 
     /// <summary>
     /// 评论
@@ -120,18 +72,7 @@ namespace UMC.Data.Entities
             set;
         }
 
-        public string OuterId
-        {
-            get;
-            set;
-        }
         public string Poster
-        {
-            get;
-            set;
-        }
-
-        public bool? IsPicture
         {
             get;
             set;
@@ -149,15 +90,6 @@ namespace UMC.Data.Entities
             get;
             set;
         }
-        /// <summary>
-        /// 无效的评分
-        /// </summary>
-        public bool? IsInvalidScore
-        {
-            get;
-            set;
-        }
-
     }
 
 }

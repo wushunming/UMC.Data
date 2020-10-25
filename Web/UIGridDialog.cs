@@ -145,15 +145,15 @@ namespace UMC.Web
 
         public void Menu(string text, string model, string cmd, string value)
         {
-            this.Menu(CreateMenu(text, model, cmd, value));
+            this.Menu(new UIClick(value) { Text = text }.Send(model, cmd));
         }
-        public void Menu(params WebMeta[] menus)
+        public void Menu(params UIClick[] menus)
         {
             this.Config.Put("menu", menus);
         }
         public void Menu(string text, string model, string cmd, WebMeta param)
         {
-            this.Menu(CreateMenu(text, model, cmd, param));
+            this.Menu(new UIClick(param) { Text = text }.Send(model, cmd));
         }
         public bool IsPage
         {

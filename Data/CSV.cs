@@ -18,22 +18,20 @@ namespace UMC.Data
             String path;
             public Log(String root, String key, String msg)
             {
-                string path = UMC.Data.Utility.MapPath(String.Format("App_Data\\Temp\\{0}\\", root));
+                string path = UMC.Data.Utility.MapPath(String.Format("App_Data\\Static\\TEMP\\{0}\\", root));
                 if (!System.IO.Directory.Exists(path))
                 {
                     System.IO.Directory.CreateDirectory(path);
                 }
                 this.path = String.Format("{0}{1}.csv", path, key);
-                using (System.IO.FileStream file = System.IO.File.Open(this.path, System.IO.FileMode.Create))
-                {
-
-                    var writer = new System.IO.StreamWriter(file);
-                    WriteLine(writer, "START", msg);
-                    writer.Flush();
-                }
+                Writer("START", msg);
             }
 
             public Log()
+            {
+
+            }
+            public void Close()
             {
 
             }
@@ -53,14 +51,11 @@ namespace UMC.Data
                 }
                 else
                 {
-                    using (System.IO.FileStream file = System.IO.File.Open(this.path, System.IO.FileMode.Append))
-                    {
-                        ;
 
-                        var writer = new System.IO.StreamWriter(file);
-                        WriteLine(writer, ks.ToArray());
-                        writer.Flush();
-                    }
+                    var writer = new System.IO.StreamWriter(this.path, true);
+                    WriteLine(writer, ks.ToArray());
+                    writer.Flush();
+                    writer.Close();
                 }
             }
 
@@ -91,7 +86,7 @@ namespace UMC.Data
         public static string ExportCSV(System.Data.IDataReader dr, System.Collections.Hashtable headers)
         {
             string randomFile = System.IO.Path.GetRandomFileName();
-            string path = UMC.Data.Utility.MapPath("App_Data\\Temp\\");
+            string path = UMC.Data.Utility.MapPath("App_Data\\Static\\TEMP\\");
             if (!System.IO.Directory.Exists(path))
             {
                 System.IO.Directory.CreateDirectory(path);
@@ -119,7 +114,7 @@ namespace UMC.Data
         public static string ExportCSV(System.Data.DataTable tab)
         {
             string randomFile = System.IO.Path.GetRandomFileName();
-            string path = UMC.Data.Utility.MapPath("App_Data\\Temp\\");
+            string path = UMC.Data.Utility.MapPath("App_Data\\Static\\TEMP\\");
             if (!System.IO.Directory.Exists(path))
             {
                 System.IO.Directory.CreateDirectory(path);
@@ -567,32 +562,35 @@ namespace UMC.Data
         /// <returns></returns>
         public static string ReadLine(TextReader reader)
         {
-            StringBuilder builder = new StringBuilder();
+            //StringBuilder builder = new StringBuilder();
             // bool IsRe = false;
-            while (true)
-            {
-                int num = reader.Read();
-                switch (num)
-                {
-                    case -1:
-                        if (builder.Length > 0)
-                        {
-                            return builder.ToString();
-                        }
-                        return null;
+            //Environment.NewLine
+            return reader.ReadLine();
+            //while (true)
+            //{
+            //    int num = reader.Read();
+            //    switch (num)
+            //    {
+            //        case -1:
+            //            if (builder.Length > 0)
+            //            {
+            //                return builder.ToString();
+            //                //TextReader.
+            //            }
+            //            return null;
 
-                    case 13:
-                    case 10:
-                        if ((num == 13) && (reader.Peek() == 10))
-                        {
-                            reader.Read();
-                            return builder.ToString();
-                        }
-                        builder.Append('\r');
-                        break;
-                }
-                builder.Append((char)num);
-            }
+            //        case 13:
+            //        case 10:
+            //            if ((num == 13) && (reader.Peek() == 10))
+            //            {
+            //                reader.Read();
+            //                return builder.ToString();
+            //            }
+            //            builder.Append('\r');
+            //            break;
+            //    }
+            //    builder.Append((char)num);
+            //}
         }
 
 
@@ -638,55 +636,56 @@ namespace UMC.Data
                     }
                     if (i == csv.Length - 1 && lastIndex < csv.Length)
                     {
-                        lstr = csv.Substring(lastIndex, i - lastIndex + 1);
+                        csvLiAsc.Add(ReplaceQuote(csv.Substring(lastIndex))); ;// i - lastIndex + 1);
                     }
                 }
-                if (!string.IsNullOrEmpty(lstr))
-                {
-                    //倒序超找
-                    lastIndex = 0;
-                    quotCount = 0;
-                    string revStr = Reverse(lstr);
-                    for (int i = 0; i < revStr.Length; i++)
-                    {
-                        if (revStr[i] == '"')
-                        {
-                            quotCount++;
-                        }
-                        else if (revStr[i] == ',' && quotCount % 2 == 0)
-                        {
-                            csvLiDesc.Add(ReplaceQuote(Reverse(revStr.Substring(lastIndex, i - lastIndex))));
-                            lastIndex = i + 1;
-                        }
-                        if (i == revStr.Length - 1 && lastIndex < revStr.Length)
-                        {
-                            csvLiDesc.Add(ReplaceQuote(Reverse(revStr.Substring(lastIndex, i - lastIndex + 1))));
-                            lastIndex = i + 1;
-                        }
+                //if (!string.IsNullOrEmpty(lstr))
+                //{
+                //    //倒序超找
+                //    lastIndex = 0;
+                //    quotCount = 0;
+                //    string revStr = Reverse(lstr);
+                //    for (int i = 0; i < revStr.Length; i++)
+                //    {
+                //        if (revStr[i] == '"')
+                //        {
+                //            quotCount++;
+                //        }
+                //        else if (revStr[i] == ',' && quotCount % 2 == 0)
+                //        {
+                //            csvLiDesc.Add(ReplaceQuote(Reverse(revStr.Substring(lastIndex, i - lastIndex))));
+                //            lastIndex = i + 1;
+                //        }
+                //        if (i == revStr.Length - 1 && lastIndex < revStr.Length)
+                //        {
+                //            csvLiDesc.Add(ReplaceQuote(Reverse(revStr.Substring(lastIndex, i - lastIndex + 1))));
+                //            lastIndex = i + 1;
+                //        }
 
-                    }
-                    var tmpStrs = csvLiDesc.ToArray();
-                    Array.Reverse(tmpStrs);
-                    csvLiAsc.AddRange(tmpStrs);
-                }
+                //    }
+                //    var tmpStrs = csvLiDesc.ToArray();
+                //    Array.Reverse(tmpStrs);
+                //    csvLiAsc.AddRange(tmpStrs);
+                //}
             }
 
             return csvLiAsc.ToArray();
         }
         /// <summary>
-        /// 反转字符串
-        /// </summary>
-        /// <param name="str"></param>
-        /// <returns></returns>
-        private static string Reverse(string str)
-        {
-            string revStr = string.Empty;
-            foreach (char chr in str)
-            {
-                revStr = chr.ToString() + revStr;
-            }
-            return revStr;
-        }
+        ///// 反转字符串
+        ///// </summary>
+        ///// <param name="str"></param>
+        ///// <returns></returns>
+        //private static string Reverse(string str)
+        //{
+
+        //    var sb = new StringBuilder();
+        //    for (int i = str.Length - 1; i > -1; i--)
+        //    {
+        //        sb.Append(str[i]);
+        //    }
+        //    return sb.ToString(); ;
+        //}
         /// <summary>
         /// 替换CSV中的双引号转义符为正常双引号,并去掉左右双引号
         /// </summary>

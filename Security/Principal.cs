@@ -4,28 +4,6 @@ using System.Text;
 
 namespace UMC.Security
 {
-    /// <summary>
-    /// 加载模式
-    /// </summary>
-    public enum RuntimeModel
-    {
-        /// <summary>
-        /// 连锁 
-        /// </summary>
-        Chain = 4,
-        /// <summary>
-        /// 单体门店
-        /// </summary>
-        Single = 1,
-        /// <summary> 
-        /// 平台
-        /// </summary>
-        //Platform = 2,
-        /// <summary>
-        /// 多商户
-        /// </summary>
-        B2C = 8
-    }
     /// <summary> 
     /// 线程身份
     /// </summary>

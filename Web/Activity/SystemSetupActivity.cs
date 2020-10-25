@@ -48,6 +48,7 @@ namespace UMC.Web.Activity
 
             var type = this.AsyncDialog("type", g =>
             {
+                return this.DialogValue("SQLite");
                 var fm = new UISheetDialog() { Title = "安装数据库" };
 
                 //fm.Options.Add(new UIClick("Oracle") { Text = "Oracle数据库" }.Send(request.Model, request.Command));
@@ -160,61 +161,72 @@ namespace UMC.Web.Activity
 
             var Key = Utility.Guid(Guid.NewGuid());
             var log = new UMC.Data.CSV.Log(Utility.GetRoot(request.Url), Key, "开始安装");
-            new System.Threading.Tasks.Task(() =>
-            {
-                var Initializers = Data.Sql.Initializer.Initializers();
-                try
-                {
-                    var now = DateTime.Now;
+            Data.Reflection.Start(() =>
+               {
+                   var Initializers = Data.Sql.Initializer.Initializers();
+                   try
+                   {
+                       var now = DateTime.Now;
+                       var Names = new Hashtable();
+                       var database = Reflection.Configuration("database") ?? new UMC.Configuration.ProviderConfiguration();
+                       var count = false;
+                       foreach (var initer in Initializers)
+                       {
+                           var dataPro = database[initer.ProviderName] ?? UMC.Data.Provider.Create(initer.ProviderName, provder.Type);
+                           var setupKey = dataPro["setup"] ?? "";
+                           if (setupKey.Contains(initer.Name) == false)
+                           {
+                               count = true;
+                               initer.Setup(new Hashtable(), log, provider);
+                               initer.Menu(new Hashtable(), new DbFactory(provider));
+                               var de = UMC.Data.Provider.Create(initer.ProviderName, provder.Type);
+                               de.Attributes.Add(provder.Attributes);
+                               de.Attributes["setup"] = String.Format("{0}{1},", setupKey, initer.Name);
+                               database.Providers[initer.ProviderName] = de;
 
-                    var database = Reflection.Configuration("Database") ?? new UMC.Configuration.ProviderConfiguration();
-                    var count = false;
-                    foreach (var initer in Initializers)
-                    {
-                        if (database.Providers.ContainsKey(initer.ProviderName) == false)
-                        {
-                            count = true;
-                            initer.Setup(new Hashtable(), log, provider);
-                            initer.Menu(new Hashtable(), new DbFactory(provider));
-                            var de = UMC.Data.Provider.Create(initer.ProviderName, provder.Type);
-                            de.Attributes.Add(provder.Attributes);
+                           }
+                           else
+                           {
+                               initer.Check(log, Reflection.CreateObject(dataPro) as DbProvider);
+                           }
+                       }
 
-                            database.Providers[initer.ProviderName] = de;
-                        }
-                    }
+                       UMC.Configuration.ProviderConfiguration.Cache.Clear();
+                       if (count == false)
+                       {
+                           log.End("对应组件已经安装");
+                       }
+                       else
+                       {
+                           var file = Reflection.AppDataPath("UMC\\database.xml");
+                           if (System.IO.File.Exists(file))
+                           {
+                               int i = 1;
+                               var m = Reflection.AppDataPath(String.Format("UMC\\database.xml.{0}.bak", i));
+                               while (System.IO.File.Exists(m))
+                               {
+                                   i++;
+                                   m = Reflection.AppDataPath(String.Format("UMC\\database.xml.{0}.bak", i));
+                               }
+                               System.IO.File.Move(file, m);
+                           }
+                           database.WriteTo(file);
+                           log.End("安装完成", "默认账户:admin 密码:admin", "请刷新界面");
+                           log.Info(String.Format("用时{0}", DateTime.Now - now));
 
-                    UMC.Configuration.ProviderConfiguration.Cache.Clear();
-                    if (count == false)
-                    {
-                        log.End("对应组件已经安装");
-                    }
-                    else
-                    {
-                        var file = Reflection.AppDataPath("UMC\\Database.xml");
-                        if (System.IO.File.Exists(file))
-                        {
-                            int i = 1;
-                            var m = Reflection.AppDataPath(String.Format("UMC\\Database.xml.{0}.bak", i));
-                            while (System.IO.File.Exists(m))
-                            {
-                                i++;
-                                m = Reflection.AppDataPath(String.Format("UMC\\Database.xml.{0}.bak", i));
-                            }
-                            System.IO.File.Move(file, m);
-                        }
-                        database.WriteTo(file);
-                        log.End("安装完成", "默认账户:admin 密码:admin", "请刷新界面");
-                        log.Info(String.Format("用时{0}", DateTime.Now - now));
-                    }
-                }
-                catch (Exception ex)
-                {
-                    log.End("安装失败");
-                    log.Info(ex.Message);
+                       }
+                   }
+                   catch (Exception ex)
+                   {
+                       log.End("安装失败");
+                       log.Info(ex.Message);
 
-                }
-
-            }).Start();
+                   }
+                   finally
+                   {
+                       log.Close();
+                   }
+               });
 
             this.Context.Send("Initializer", false);
 

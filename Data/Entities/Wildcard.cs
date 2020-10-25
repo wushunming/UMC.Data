@@ -11,11 +11,6 @@ namespace UMC.Data.Entities
             get;
             set;
         }
-        //public string GroupBy
-        //{
-        //    get;
-        //    set;
-        //}
         public string Description
         {
             get;

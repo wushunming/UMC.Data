@@ -26,6 +26,10 @@ namespace UMC.Web
         {
             return new UIClick(type) { Key = "Search" };
         }
+        public static UIClick Search(string model, String cmd)
+        {
+            return new UIClick(new WebMeta().Put("model", model).Put("cmd", cmd)) { Key = "Search" };
+        }
         public static UIClick Pager(String model, String cmd, WebMeta search)
         {
             var key = new WebMeta().Put("model", model, "cmd", cmd).Put("search", search);
@@ -76,12 +80,12 @@ namespace UMC.Web
             }
             return new UIClick(key) { Key = "Pager" };
         }
-        public static UIClick BarCode(UIClick click)
-        {
-            var cl = new UIClick() { Key = "BarCode" };
-            cl._send = click;
-            return cl;
-        }
+        //public static UIClick BarCode(UIClick click)
+        //{
+        //    var cl = new UIClick() { Key = "BarCode" };
+        //    cl._send = click;
+        //    return cl;
+        //}
         public static UIClick Pager(String model, String cmd, String refreshEvent)
         {
             var key = new WebMeta().Put("model", model, "cmd", cmd);
@@ -173,6 +177,26 @@ namespace UMC.Web
         public static UIClick Query(WebMeta query)
         {
             return new UIClick(query) { Key = "Query" };
+        }
+        /// <summary>
+        /// 界面查询
+        /// </summary>
+        /// <param name="query">查询字典对</param>
+        /// <param name="cache">是否缓存</param>
+        /// <returns></returns>
+        public static UIClick Query(WebMeta query, bool cache)
+        {
+            return cache ? new UIClick(new WebMeta(query).Put("cache", true)) { Key = "Query" } : new UIClick(query) { Key = "Query" };
+        }
+        /// <summary>
+        /// 界面查询
+        /// </summary>
+        /// <param name="key">Section界面Key</param>
+        /// <param name="query"></param>
+        /// <returns></returns>
+        public static UIClick Query(String key, WebMeta query)
+        {
+            return new UIClick(new WebMeta().Put("key", key).Put("send", query)) { Key = "Query" };
         }
         public UIClick() { }
         public UIClick(String send)

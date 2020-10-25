@@ -11,15 +11,8 @@ namespace UMC.Web
     /// <summary>
     /// 网络请求
     /// </summary>
-    public abstract class WebFactory : IWebFactory
+    public class WebFactory : IWebFactory
     {
-        private String[] models;
-        private Uri uri;
-        protected void RegisterModel(Uri uri, params String[] models)
-        {
-            this.models = models;
-            this.uri = uri;
-        }
         public class XHRer : IJSON
         {
             public XHRer(String ex)
@@ -40,27 +33,68 @@ namespace UMC.Web
 
             #endregion
         }
-        protected IJSON Expression(string xhr)
-        {
-            return new XHRer(xhr);
-        }
         class XHRFlow : WebFlow
         {
             private Uri uri;
-            public XHRFlow(Uri uri)
+            private String appSecret;
+            public XHRFlow(Uri uri, string secret)
             {
                 this.uri = uri;
+                this.appSecret = secret;
 
             }
-            public override WebActivity GetFirstActivity()
+            public XHRFlow(Uri uri, string secret, params string[] cmds)
             {
 
+                this.uri = uri;
+                this.appSecret = secret;
+                this.cmds.AddRange(cmds);
+            }
+            private System.Text.RegularExpressions.Regex regex;
+            public XHRFlow(Uri uri, string secret, System.Text.RegularExpressions.Regex regex)
+            {
+
+                this.appSecret = secret;
+                this.uri = uri;
+                this.regex = regex;
+
+            }
+            private List<String> cmds = new List<string>();
+            public override WebActivity GetFirstActivity()
+            {
+                var cmd = this.Context.Request.Command;
+                if (this.cmds.Count > 0)
+                {
+                    if (String.Equals("*", this.cmds[0]))
+                    {
+                        if (this.cmds.Exists(g => g == cmd))
+                        {
+                            return WebActivity.Empty;
+                        }
+                    }
+                    else if (this.cmds.Exists(g => g == cmd) == false)
+                    {
+                        return WebActivity.Empty;
+                    }
+                }
+                else if (regex != null && regex.IsMatch(cmd) == false)
+                {
+                    return WebActivity.Empty;
+                }
                 StringBuilder sb = new StringBuilder();
-                sb.Append(new Uri(this.uri, "/").AbsoluteUri);
                 WebRequest req = this.Context.Request;
-                sb.Append(Data.Utility.GetRoot(req.Url));
-                sb.Append("/");
-                sb.Append(AccessToken.Token);
+                if (this.uri.AbsoluteUri.EndsWith("/*"))
+                {
+                    sb.Append(this.uri.AbsoluteUri.Substring(0, this.uri.AbsoluteUri.Length - 1));
+                }
+                else
+                {
+                    sb.Append(this.uri.AbsoluteUri.TrimEnd('/'));
+                    sb.Append("/");
+                    sb.Append(Data.Utility.GetRoot(req.Url));
+                    sb.Append("/");
+                }
+                sb.Append(Utility.Guid(AccessToken.Token.Value));
                 sb.Append("/");
                 if (req.Headers.ContainsKey(EventType.Dialog))
                 {
@@ -91,7 +125,7 @@ namespace UMC.Web
                     {
                         String dg = req.Headers.Get(EventType.Dialog);
                         sb.Append("?");
-                        sb.Append(Uri.UnescapeDataString(dg)); ;// em.Key.ToString()));
+                        sb.Append(Uri.UnescapeDataString(dg));
 
 
                     }
@@ -140,10 +174,48 @@ namespace UMC.Web
                     }
 
                 }
-
+                var user = UMC.Security.Identity.Current;
                 var http = new System.Net.Http.HttpClient();
-                http.DefaultRequestHeaders.Add("user-agent", req.UserAgent);
-                String xhr = http.GetStringAsync(sb.ToString()).Result;
+                if (http.DefaultRequestHeaders.UserAgent.TryParseAdd(req.UserAgent) == false)
+                {
+                    http.DefaultRequestHeaders.UserAgent.ParseAdd(Uri.EscapeDataString(req.UserAgent));
+
+                }
+                if (String.IsNullOrEmpty(this.appSecret) == false)
+                {
+                    var nvs = new System.Collections.Specialized.NameValueCollection();
+                    nvs.Add("umc-request-time", this.Context.runtime.Client.XHRTime.ToString());
+                    nvs.Add("umc-request-user-id", Utility.Guid(user.Id.Value));
+                    nvs.Add("umc-request-user-name", user.Name);
+                    nvs.Add("umc-request-user-alias", user.Alias);
+                    if (user.Roles != null && user.Roles.Length > 0)
+                    {
+                        nvs.Add("umc-request-user-role", String.Join(",", user.Roles));
+
+                    }
+                    nvs.Add("umc-request-sign", Utility.Sign(nvs, this.appSecret));
+                    for (var i = 0; i < nvs.Count; i++)
+                    {
+                        http.DefaultRequestHeaders.Add(nvs.GetKey(i), Uri.EscapeDataString(nvs.Get(i)));
+                    }
+                }
+                else
+                {
+                    http.DefaultRequestHeaders.Add("umc-request-time", this.Context.runtime.Client.XHRTime.ToString());
+
+                }
+                var ress = http.GetAsync(sb.ToString()).Result;
+                int StatusCode = (int)ress.StatusCode;
+
+                if (StatusCode > 300 && StatusCode < 400)
+                {
+                    var url = ress.Headers.Location;
+                    if (url != null)
+                    {
+                        this.Context.Response.Redirect(url);
+                    }
+                }
+                String xhr = ress.Content.ReadAsStringAsync().Result;// http.GetStringAsync(sb.ToString()).Result;
 
                 String eventPfx = "{\"ClientEvent\":";
                 if (xhr.StartsWith(eventPfx))
@@ -159,14 +231,40 @@ namespace UMC.Web
                         }
                         else
                         {
-                            if ((webEvent & WebEvent.DataEvent) == WebEvent.DataEvent)
+                            var header = (JSON.Deserialize(xhr) as Hashtable)["Headers"] as Hashtable;
+                            if ((webEvent & WebEvent.Reset) == WebEvent.Reset)
+                            {
+                                if (header.ContainsKey("Reset"))
+                                {
+
+                                    var reset = header["Reset"] as Hashtable;
+                                    if (reset != null)
+                                    {
+                                        String Command = reset["Command"] as string;
+                                        String Model = reset["Model"] as string;
+                                        String Value = reset["Value"] as string;
+                                        if (String.IsNullOrEmpty(Model) == false && String.IsNullOrEmpty(Command) == false)
+                                        {
+                                            if (String.IsNullOrEmpty(Value))
+                                            {
+                                                this.Context.Response.Redirect(Model, Command);
+                                            }
+                                            else
+                                            {
+                                                this.Context.Response.Redirect(Model, Command, Value);
+                                            }
+                                        }
+
+                                    }
+                                }
+                            }
+                            else if ((webEvent & WebEvent.DataEvent) == WebEvent.DataEvent)
                             {
                                 var rtime =
                                    this.Context.runtime;
 
                                 if (rtime.Client.UIEvent != null)
                                 {
-                                    var header = (JSON.Deserialize(xhr) as Hashtable)["Headers"] as Hashtable;
                                     if (header.ContainsKey("DataEvent"))
                                     {
                                         var dataEvents = new List<WebMeta>();
@@ -203,6 +301,7 @@ namespace UMC.Web
                                                 }
                                                 this.Context.Send(value, true);
 
+
                                             }
                                         }
                                     }
@@ -226,21 +325,50 @@ namespace UMC.Web
         }
         public virtual WebFlow GetFlowHandler(string mode)
         {
-            if (this.models != null && this.uri != null)
+            var cgf = Configuration.ProviderConfiguration.GetProvider(Reflection.ConfigPath("UMC.xml"));
+            if (cgf != null)
             {
-                foreach (var m in this.models)
+                var provder = cgf[mode];
+                if (provder != null)
                 {
-                    if (m == mode)
-                        return new XHRFlow(this.uri);
+                    var url = (provder["src"]);
+                    if (String.IsNullOrEmpty(url) == false)
+                    {
+                        string secret = provder["secret"] as string;
+                        if (String.IsNullOrEmpty(provder.Type) == false)
+                        {
+                            if (provder.Type.StartsWith("/") && provder.Type.EndsWith("/"))
+                            {
+
+                                return new XHRFlow(new Uri(url), secret, new System.Text.RegularExpressions.Regex(provder.Type.Trim('/')));
+                            }
+                            else if (String.Equals("*", provder.Type) == false)
+                            {
+                                return new XHRFlow(new Uri(url), secret, provder.Type.Split(','));
+
+                            }
+                            else
+                            {
+                                return new XHRFlow(new Uri(url), secret);
+                            }
+                        }
+                        else
+                        {
+
+                            return new XHRFlow(new Uri(url), secret);
+                        }
+                    }
                 }
             }
-
             return WebFlow.Empty;
         }
         /// <summary>
         /// 请在此方法中完成url与model的注册,即调用registerModel方法
         /// </summary>
         /// <param name="context"></param>
-        public abstract void OnInit(WebContext context);
+        public virtual void OnInit(WebContext context)
+        {
+
+        }
     }
 }

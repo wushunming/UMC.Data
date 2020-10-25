@@ -14,6 +14,8 @@ namespace UMC.Web.Activity
         {
             switch (this.Context.Request.Command)
             {
+                case "Config":
+                    return new SystemConfigActivity();
                 case "Icon":
                     return new SystemIconActivity();
                 case "TimeSpan":
@@ -22,10 +24,12 @@ namespace UMC.Web.Activity
                 case "Start":
                     this.Context.Send("Setup", true);
                     break;
+                case "Web":
+                    return new SystemWebActivity();
                 case "Mapping":
 
                     var Initializers = Data.Sql.Initializer.Initializers();
-                    var database = Reflection.Configuration("Database") ?? new Configuration.ProviderConfiguration();
+                    var database = Reflection.Configuration("database") ?? new Configuration.ProviderConfiguration();
 
                     var data = new System.Data.DataTable();
                     data.Columns.Add("name");
@@ -35,7 +39,29 @@ namespace UMC.Web.Activity
                     {
                         data.Rows.Add(n.Name, n.Caption, database.Providers.ContainsKey(n.ProviderName));
                     }
-                    this.Context.Response.Redirect(new WebMeta().Put("component", data).Put("data", WebServlet.Mapping()));
+                    var data2 = new System.Data.DataTable();
+                    data2.Columns.Add("model");
+                    data2.Columns.Add("cmd");
+                    data2.Columns.Add("text");
+                    data2.Columns.Add("src");
+
+                    var cfg = Configuration.ProviderConfiguration.GetProvider(Reflection.ConfigPath("UMC.xml"));// ?? new Configuration.ProviderConfiguration();
+                    if (cfg != null)
+                    {
+                        for (var i = 0; i < cfg.Count; i++)
+                        {
+                            var p = cfg[i];
+                            var cmd = p.Type;// p["regex"]; // p.Type;
+
+                            if (String.IsNullOrEmpty(p.Type))
+                            {
+                                cmd = "*";
+                            }
+
+                            data2.Rows.Add(p.Name, cmd, p["desc"], p["src"]);
+                        }
+                    }
+                    this.Context.Response.Redirect(new WebMeta().Put("component", data).Put("data", WebServlet.Mapping()).Put("webs", data2));
                     break;
                 case "Menu":
                     return new SystemMenuActivity();

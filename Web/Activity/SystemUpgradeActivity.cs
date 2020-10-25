@@ -28,13 +28,13 @@ namespace UMC.Web.Activity
 
 
             }
-            new System.Threading.Tasks.Task(() =>
+            Data.Reflection.Start(() =>
             {
                 try
                 {
                     var now = DateTime.Now;
 
-                    var database = Reflection.Configuration("Database") ?? new UMC.Configuration.ProviderConfiguration();
+                    var database = Reflection.Configuration("database") ?? new UMC.Configuration.ProviderConfiguration();
                     foreach (var initer in Initializers)
                     {
                         if (database.Providers.ContainsKey(initer.ProviderName))
@@ -63,7 +63,7 @@ namespace UMC.Web.Activity
 
                 }
 
-            }).Start();
+            });
 
             this.Context.Send("Initializer", false);
 

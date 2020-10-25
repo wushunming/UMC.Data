@@ -21,7 +21,7 @@ namespace UMC.Web.Activity
 
 
             var root = Utility.GetRoot(request.Url);
-            string path2 = UMC.Data.Utility.MapPath(String.Format("App_Data\\Temp\\{0}\\", root));
+            string path2 = UMC.Data.Utility.MapPath(String.Format("App_Data\\Static\\TEMP\\{0}\\", root));
 
             var file = String.Format("{0}{1}.csv", path2, media_id);
             if (System.IO.File.Exists(file) == false)
@@ -43,6 +43,7 @@ namespace UMC.Web.Activity
             var ui = UISection.Create(new UITitle("执行日志"));
             using (System.IO.StreamReader reader = new System.IO.StreamReader(file))
             {
+                
 
                 bool IsEnd = false;
                 CSV.EachRow(reader, rows =>

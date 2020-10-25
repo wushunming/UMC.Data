@@ -79,18 +79,18 @@ namespace UMC.Data.Sql
         public override bool? Check(string name, string field, ISqler sqler)
         {
 
-            return Convert.ToInt32(sqler.ExecuteScalar("select count(*) from user_tab_columns where table_name = {0} and column_name = {1}", name, field)) > 0;
+            return Convert.ToInt32(sqler.ExecuteScalar("SELECT COUNT(*) FROM USER_TAB_COLUMNS WHERE TABLE_NAME = {0} AND COLUMN_NAME = {1}", name, field)) > 0;
         }
         public override bool? Check(string name, ISqler sqler)
         {
-            return Convert.ToInt32(sqler.ExecuteScalar("select count(*) from user_objects where table_name = {0}", name)) > 0;
+            return Convert.ToInt32(sqler.ExecuteScalar("SELECT COUNT(*) FROM USER_OBJECTS WHERE TABLE_NAME = {0}", name)) > 0;
         }
     }
 
     public class OracleDbProvider : UMC.Data.Sql.DbProvider
     {
         public override DbBuilder Builder => new OracleBuilder();
-        private static System.Data.Common.DbProviderFactory Instance;
+        public static System.Data.Common.DbProviderFactory Instance;
         public override System.Data.Common.DbProviderFactory DbFactory
         {
             get

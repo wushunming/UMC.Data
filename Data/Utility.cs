@@ -557,7 +557,7 @@ namespace UMC.Data
             }
             else if (root.IndexOf('.') > 0)
             {
-                return "WebADNuke";// UMC.Security.Membership.Sharename;
+                return "UMC";// UMC.Security.Membership.Sharename;
             }
             return root;
         }
@@ -724,7 +724,7 @@ namespace UMC.Data
 
             if (String.IsNullOrEmpty(UserAgent) == false)
             {
-                return UserAgent.IndexOf("WebADNuke POS Client") > -1;
+                return UserAgent.IndexOf("UMC Client") > -1;
             }
             return false;
         }
@@ -990,6 +990,20 @@ namespace UMC.Data
                 return ms.ToArray();
             }
 
+        }
+        public static String Sign(System.Collections.Specialized.NameValueCollection query, string appKey)
+        {
+            var buff = new System.Text.StringBuilder();
+
+            var result = new List<String>(query.AllKeys);
+           
+            result.Sort();
+            foreach (var pair in result)
+            {
+                buff.AppendFormat("{0}={1}&", pair, query[pair]);
+            }
+            buff.AppendFormat("key={0}", appKey);
+            return MD5(buff.ToString());
         }
 
         public static string MD5(string myString)
@@ -1380,7 +1394,6 @@ namespace UMC.Data
             return i;
         }
 
-        readonly static string BaseDirectory = System.AppDomain.CurrentDomain.BaseDirectory;
         /// <summary>
         /// 转化路径
         /// </summary>
@@ -1388,19 +1401,7 @@ namespace UMC.Data
         /// <returns></returns>
         public static string MapPath(string path)
         {
-            path = path.Trim('~');
-
-            if (String.IsNullOrEmpty(path))
-            {
-                return BaseDirectory;
-            }
-            else if (path.Length == 1 || (path.Length > 1 && path[1] != ':'))
-            {
-                path = BaseDirectory + path;// String.Format("{0}{1}", BaseDirectory, path);
-            }
-            path = System.Text.RegularExpressions.Regex.Replace(path, @"/+", Path.DirectorySeparatorChar.ToString());
-            return System.Text.RegularExpressions.Regex.Replace(path, @"\\+", Path.DirectorySeparatorChar.ToString());
-            // return path;
+            return Data.Reflection.Instance().AppPath(path);
         }
         public static void Error(String name, params object[] logs)
         {
@@ -1412,36 +1413,12 @@ namespace UMC.Data
         }
         static void writeLog(String name, String type, params object[] logs)
         {
+            Reflection.Instance().WriteLog(name, type, logs);
 
-            var filename = MapPath(String.Format("App_Data\\{2}\\{1}\\{0:yy-MM-dd}.log", DateTime.Now, name, type));
-            if (!System.IO.Directory.Exists(System.IO.Path.GetDirectoryName(filename)))
-            {
-                System.IO.Directory.CreateDirectory(System.IO.Path.GetDirectoryName(filename));
-            }
-
-            using (System.IO.StreamWriter writer = new System.IO.StreamWriter(filename, true))
-            {
-                foreach (var b in logs)
-                {
-                    if (b is String)
-                    {
-                        writer.Write(b);
-                    }
-                    else
-                    {
-                        Data.JSON.Serialize(b, writer);
-                    }
-                    writer.WriteLine();
-                }
-                writer.WriteLine();
-                writer.WriteLine();
-                writer.Close();
-                writer.Dispose();
-            }
         }
         public static void Log(String name, params object[] logs)
         {
-            writeLog(name, "log", logs);
+            writeLog(name, "Log", logs);
         }
         /// <summary>
         /// 把字符转化为对应的枚举
